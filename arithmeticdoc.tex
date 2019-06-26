@@ -1,0 +1,503 @@
+\documentclass[a4paper,12pt]{amsart}
+%\usepackage{fullpage}
+\usepackage[pass,a4paper]{geometry}
+\usepackage{url,amssymb}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\SL}{\mathrm{SL}}
+\newcommand{\PSL}{\mathrm{PSL}}
+\newcommand{\Sp}{\mathrm{Sp}}
+\newcommand{\SX}{\mathrm{SX}}
+\newcommand{\PSp}{\mathrm{PSp}}
+\def\mycmd#1{\ \smallskip\\$\blacktriangleright$\ #1\\}
+
+\title{{\sf GAP} functionality for Zariski dense groups}
+\author{Alla Detinko}
+\address{School of Computer Science, University of St Andrews, UK}
+\author{Dane Flannery}
+\address{School of Mathematics, Statistics and Applied Mathematics,
+National University of Ireland, Galway, Ireland}
+\author{Alexander Hulpke}
+\address{Department of Mathematics, Colorado State University, Fort Collins,
+CO 80523-1874, USA}
+\date{Version 1.4, August 2017}
+
+\begin{document}
+\maketitle
+
+In this document we describe the functionality of {\sf GAP} \cite{Gap} 
+routines for Zariski dense or arithmetic groups that are developed
+in~\cite{Arithm,Density, MFO}.
+
+The research underlying the software was supported through the programme
+``Research in Pairs'', at the Mathematisches Forschungsinstitut Oberwolfach,
+and part of the software was written during a stay in June 2017.
+The hospitality we received has been greatly appreciated. 
+
+Our research was also supported by a Marie Sk\l odowska-Curie Individual
+Fellowship grant under Horizon 2020 (EU Framework Programme for
+Research and Innovation),
+and a Simons Foundation Collaboration Grant Nr. 244502. All support
+is acknowledged with gratitude.
+
+\section{Background}
+
+We consider $H$ to be an integral matrix group, given by generator matrices
+which lie in the special linear group
+\[
+\SL(n,\Z)=\left\{A\in\Z^{n\times n}\mid \det A=1\right\}
+\]
+for $n\ge 2$; respectively the symplectic group
+\[
+\Sp(n,\Z)=\left\{A\in \SL(n,\Z)\mid A^T\cdot J\cdot A=J\right\}
+\]
+with 
+\[
+J=\left(\begin{array}{cc}0&1_{n/2}\\
+-1_{n/2}&0\\
+\end{array}\right) 
+\]
+for $n\ge 2$ even.
+(It will be required to specify which case is to be considered.)  We shall write $\SX(n,\Z)$ from now on,
+denoting either choice.
+
+If $m>1$, we can consider the matrices
+as being written over $\Z/m\Z$ and obtain a subgroup of $\SX(n,\Z/m\Z)$.
+We denote this reduction homomorphism by
+$\varphi_m$.
+
+By~\cite{Matthews},
+a subgroup $H \leq \SX(n,\Z)$ is Zariski dense in $\SX(n,{\mathbb R})$, if
+and only if the
+image group $\varphi_p(H)$ is equal to $\SX(n,p)$ for almost all primes
+$p$. We denote by $\Pi(H)$ the finite set of primes $p$ for which
+$\varphi_p(H)$ is a proper subgroup of $\SX(n,p)$.
+
+Furthermore, $H$ has finite index in $\SX(n,\Z)$ only if $H$ is Zariski
+dense. In this case, $H$ is called {\em arithmetic}.
+If also $n\ge 3$, there will be a smallest integer $M$, called the 
+{\em level} of $H$, such that the kernel of the reduction modulo $M$ homomorphism $\varphi_M$ (as a map on $\SX(n,\Z)$)
+lies in $H$.
+We denote by $\pi(M)$ the set of prime divisors of $M$.
+\medskip
+
+If $H$ is Zariski dense but not of finite index, there will be a unique
+minimal arithmetic group $\bar H$ with $H<\bar H\le\SX(n,\Z)$. We call this
+group $\bar H$ the {\em arithmetic closure} of $H$. If $H$ is arithmetic, we
+simply set $\bar H=H$.
+
+This naturally poses the following algorithmic questions for a subgroup $H
+\leq \SX(n,\Z)$, given by generating matrices: 
+\begin{itemize}
+\item Test whether $H$ is Zariski dense.
+\item For a dense subgroup $H$, determine the set $\Pi(H)$ of relevant
+primes.
+\item If $H$ is arithmetic and $n\ge 3$, determine its level and index in
+$\SX(n,\Z)$.
+\item If $H$ is dense and $n\ge 3$, determine its arithmetic closure $\bar{H}$.
+\end{itemize}
+Deterministic algorithms for these questions are described in
+\cite{Arithm,Density, MFO}; this documents describes implementations of
+these algorithms.
+\medskip
+
+%The main functionality of the routines provided is to determine $\Pi(H)$ as
+%well as $M$.
+%\smallskip
+
+%[\textbf{AD}: this is my text; AH text is commented out below]
+A fundamental result of~\cite{Density} is that $\pi(M) = \Pi(H)$ with possible exceptions for $n\le 4$.
+In that case we will have that $\pi(M)=\Pi(H)\cup\{2\}$ and $\varphi_4(H)$ is a proper
+subgroup of $\SX(n,\Z/4\Z)$.
+
+%A fundamental result of~\cite{Density} is that $\pi(M)\subset\Pi(H)\cup\{2\}$ with inequality only possible for $n\le 4$.
+%In the case of inequality we will have that $\varphi_4(H)$ is a proper subgroup of $\SX(n,\Z/4\Z)$.
+\bigskip
+
+The actual code consists of a file that can be read in by {\sf GAP}. It is
+available at the web address
+\url{http://www.math.colostate.edu/~hulpke/arithmetic.g} 
+
+It requires {\sf
+GAP} in release at least 4.8; the
+{\tt matgrp} package, as well as the packages ({\tt recog}, {\tt genss},
+{\tt orb}, {\tt io}) on which it relies.
+
+Place the file in a directory readable by {\sf GAP} and read it as
+\begin{verbatim}
+gap> Read("arithmetic.g");
+\end{verbatim}
+You should get a printout that the routines were loaded, respectively an
+error message that a required package could not be loaded.
+\bigskip
+
+In the description of the functionality below, the default input to most of
+the routines will be a group $H$, generated by a finite number of integral
+matrices. Functions also take an optional argument {\em kind}, which
+currently may take the values {\tt SL} or {\tt 1} (either is indicating that the
+group is to be considered as a subgroup of $\SL(n,\Z)$ ), respectively {\tt
+SP} or {\tt 2} indicating it as a subgroup of $\Sp$.
+If no kind is indicated, it will be assumed that the kind is $\SL$.
+
+The routines perform minimal validity checks for the input. They will not
+check for membership of group elements or correctness of the specified kind.
+If the kind is $\Sp(n,\Z)$, the form 
+%[\textbf{AD:} should we denote identity as $1_n$ is it in papers?]
+\[
+\left(\begin{array}{cc}0&1_{n/2}\\
+-1_{n/2}&0\\
+\end{array}\right) 
+\]
+is assumed. If the matrices preserve only a different form, incorrect
+results might arise. Similarly, if the group given is not generated by
+integer matrices, the behavior of the routines is undefined.
+
+\section{Basic Routines}
+
+This section describes routines that can be used to generate $\SL(n,\Z)$ or
+$\Sp(n,\Z)$ in matrix form, or as a finitely presented group, as well as for
+computing with congruence images of matrix groups.
+
+\mycmd{{\tt SLNZFP(n)}}
+constructs an isomorphism from a finitely presented version of $\SL(n,\Z)$
+to the natural matrix version. Note that factorization of matrices into
+generators is not yet possible.
+\begin{verbatim}
+gap> hom:=SLNZFP(3);
+[ t12, t13, t21, t23, t31, t32 ] ->
+[ [ [ 1, 1, 0 ], [ 0, 1, 0 ], [ 0, 0, 1 ] ],
+  [ [ 1, 0, 1 ], [ 0, 1, 0 ], [ 0, 0, 1 ] ],
+  [ [ 1, 0, 0 ], [ 1, 1, 0 ], [ 0, 0, 1 ] ],
+  [ [ 1, 0, 0 ], [ 0, 1, 1 ], [ 0, 0, 1 ] ],
+  [ [ 1, 0, 0 ], [ 0, 1, 0 ], [ 1, 0, 1 ] ],
+  [ [ 1, 0, 0 ], [ 0, 1, 0 ], [ 0, 1, 1 ] ] ]
+\end{verbatim}
+
+\mycmd{{\tt HNFWord(hom,mat)}}
+For a homomorphism created through {\tt SLNZFP} and a matrix, this routine
+returns a word in the finitely presented group that maps to the desired
+image matrix. (This will only work for $\SL$.)
+\begin{verbatim}
+gap> HNFWord(hom,[ [ 26, -3, 9 ], [ 0, -1, 6 ], [ -3, 0, 1 ] ]);
+t23^-1*t12^-9*(t21^-1*t12^2)^2*t21^3*t31^-3*t32^-1*t23^-34
+  *(t32^-1*t23^2)^2*t32^-1*t23^-5*t12^12*t13^-72
+gap> Image(hom,last);
+[ [ 26, -3, 9 ], [ 0, -1, 6 ], [ -3, 0, 1 ] ]
+\end{verbatim}
+
+\mycmd{{\tt SPNZFP(n)}}
+constructs an isomorphism from a finitely presented version of $\Sp(n,\Z)$
+to the natural matrix version. Note that factorization of matrices into
+generators is not yet possible.
+\begin{verbatim}
+gap> hom:=SPNZFP(4);
+[ T12, T21, U12, U21, V12, V21 ] ->
+[ [ [ 1, 1, 0, 0 ], [ 0, 1, 0, 0 ], [ 0, 0, 1, 0 ], [ 0, 0, -1, 1 ] ],
+  [ [ 1, 0, 0, 0 ], [ 1, 1, 0, 0 ], [ 0, 0, 1, -1 ], [ 0, 0, 0, 1 ] ],
+  [ [ 1, 0, 0, 1 ], [ 0, 1, 1, 0 ], [ 0, 0, 1, 0 ], [ 0, 0, 0, 1 ] ],
+  [ [ 1, 0, 0, 1 ], [ 0, 1, 1, 0 ], [ 0, 0, 1, 0 ], [ 0, 0, 0, 1 ] ],
+  [ [ 1, 0, 0, 0 ], [ 0, 1, 0, 0 ], [ 0, 1, 1, 0 ], [ 1, 0, 0, 1 ] ],
+  [ [ 1, 0, 0, 0 ], [ 0, 1, 0, 0 ], [ 0, 1, 1, 0 ], [ 1, 0, 0, 1 ] ] ]
+\end{verbatim}
+%
+%[\textbf{AD}: In MFO preprint we call it MatrixGroupModulo; I suggest to change name in the preprint]
+
+\mycmd{{\tt ModularImageMatrixGroup(H,m)}}
+returns the matrix group over $\Z/m\Z$ obtained by reducing the coefficients
+of the matrices in the group $H$ modulo $m$. 
+If $H$ is already defined over a residue
+class ring $\Z/k\Z$ and $m\mid k$ this is the obvious reduction; if
+$m\not\,\mid k$ the result is undefined.
+\begin{verbatim}
+gap> h:=Group([ [ [ 26, -3, 9 ], [ 0, -1, 6 ], [ -3, 0, 1 ] ],
+>   [ [ -1, 0, 0 ], [ -9, 1, -3 ], [ 3, 0, -1 ] ],
+>   [ [ 0, 0, 1 ], [ 1, 0, 9 ], [ 0, 1, 0 ] ] ]);
+<matrix group with 3 generators>
+gap> a:=ModularImageMatrixGroup(h,9*17);
+<matrix group with 3 generators>
+gap> a.1;
+[ [ ZmodnZObj( 26, 153 ), ZmodnZObj( 150, 153 ), ZmodnZObj( 9, 153 ) ],
+  [ ZmodnZObj( 0, 153 ), ZmodnZObj( 152, 153 ), ZmodnZObj( 6, 153 ) ],
+    [ ZmodnZObj( 150, 153 ), ZmodnZObj( 0, 153 ), ZmodnZObj( 1, 153 ) ] ]
+gap> Display(a.1);
+matrix over Integers mod 153:
+[ [   26,  150,    9 ],
+  [    0,  152,    6 ],
+gap> b:=ModularImageMatrixGroup(a,3);
+<matrix group with 3 generators>
+gap> b.1;
+[ [ Z(3), 0*Z(3), 0*Z(3) ], [ 0*Z(3), Z(3), 0*Z(3) ],
+  [ 0*Z(3), 0*Z(3), Z(3)^0 ] ]
+  [  150,    0,    1 ] ]
+gap> Display(b.1);
+ 2 . .
+ . 2 .
+ . . 1
+\end{verbatim}
+
+The general functionality for matrix groups over residue class rings is
+still limited to some extent. When working further with such a group, the first
+call should be to the (somewhat technical) function {\tt
+FittingFreeLiftSetup}. This will establish, for example, the order of the
+group, and set up basic data structures for other calculations.
+
+\begin{verbatim}
+gap> FittingFreeLiftSetup(a);;
+gap> Size(a);
+2251866396672
+\end{verbatim}
+
+It is also possible to convert the group to an (isomorphic) permutation
+representation, using {\tt IsomorphismPermGroup}, but in general these groups will be of inconveniently large
+degree.
+
+\section{Density Testing}
+
+This section describes a variety of routines that can be used to test
+Zariski density of a matrix group.
+
+\mycmd{{\tt IsTransvection(t)}}
+tests whether $t$ is a transvection; that is, the rank of $t-1_n$ is $1$ and
+$(t-1_n)^2=0$.
+\begin{verbatim}
+gap> t:=[ [ 1, 0, 0 ], [ -9, 1, 0 ], [ -6, 0, 1 ] ];;
+gap> IsTransvection(t);
+true
+\end{verbatim}
+
+In all examples below we will assume that
+\begin{verbatim}
+gap> h:=Group([ [ [ 26, -3, 9 ], [ 0, -1, 6 ], [ -3, 0, 1 ] ],
+>   [ [ -1, 0, 0 ], [ -9, 1, -3 ], [ 3, 0, -1 ] ],
+>   [ [ 0, 0, 1 ], [ 1, 0, 9 ], [ 0, 1, 0 ] ] ]);
+\end{verbatim}
+This is a dense subgroup of $\SL(3,\Z)$ and contains the transvection $t$
+from the previous example. If we take instead the subgroup generated by the
+first generator of $h$ together with $t$, we obtain a subgroup that is no
+longer dense.
+
+\mycmd{{\tt IsDenseDFH(H[,kind],t)}}
+implements the density test of~\cite{Density}.
+%[\textbf{AD}: I added reference to the preprint as the case $\SL(2n, \Z)$ with transvection is implemented now].
+Here $t$ must be a transvection in $H$, given as a matrix. (Membership of
+$t$ in $H$ is assumed and not tested.)
+\begin{verbatim}
+gap> IsDenseDFH(h,SL,t);
+true
+gap> IsDenseDFH(Group(h.1,t),SL,t);
+false
+\end{verbatim}
+
+\mycmd{{\tt IsDenseIR1(H[,kind])}}
+implements the Monte-Carlo algorithm \cite[Algorithm~1]{Rivin1} to test
+density. It returns {\tt true} if the group is dense, and {\tt false} if it
+is not dense or the test failed.
+
+This routine is by far the fastest of the density tests; however, if it
+returns {\tt false}, this might indicate either that the group is not dense,
+or that a random search failed to find a suitable element.
+\begin{verbatim}
+gap> IsDenseIR1(h,SL);
+true
+gap> IsDenseIR1(Group(h.1,t));
+false
+\end{verbatim}
+
+\mycmd{{\tt IsDenseIR2(H[,kind])}}
+implements the deterministic algorithm \cite[p.23]{Rivin1} to test
+density by verifying absolute irreducibility of the adjoint representation. It
+is the slowest of the density test routines.
+Due to the current implementation, it requires $H$ to consist of
+integral matrices (though the algorithm itself would also work over the
+rationals or number fields).
+\begin{verbatim}
+gap> IsDenseIR2(h,SL);
+true
+gap> IsDenseIR2(Group(h.1,t));
+false
+\end{verbatim}
+
+\section{Primes and Level}
+
+Next, we describe functions that determine the set of primes $\pi(M)$ and
+$\Pi(H)$ associated to $H$, as well as the level $M$ of the arithmetic
+closure of $H$. All functions in this section assume that $H$ is dense and
+might not terminate, or produce meaningless results, if it is not.
+%[\textbf{AD}: to add `Here $H$ is dense' or so ?]
+
+\mycmd{{\tt PrimesNonSurjective(H[,kind])}}
+takes an integral matrix group $H$ and
+returns the set $\pi(M)$ of primes that divide the level $M$ of the arithmetic
+closure $\bar H$ of $H$.
+
+At the moment this function is only implemented for $\SL$ in prime degree;
+future releases will cover further cases.
+
+(We continue with the same group $H$ in the examples.)
+\begin{verbatim}
+gap> PrimesNonSurjective(h,SL);
+[ 3, 73 ]
+\end{verbatim}
+
+We can translate between $\Pi(H)$ and $\pi(M)$ (which is only required in
+dimension $\le 4$) by considering the images
+modulo $2$ and modulo $4$. This is illustrated in the following example:
+
+\begin{verbatim}
+gap> gp:=Group([[[0,0,1],[1,0,0],[0,1,0]],[[1,2,4],[0,-1,-1],[0,1,0]]]);;
+gap> PrimesNonSurjective(gp);
+[ 2, 3, 5, 19 ]
+gap> gp2:=ModularImageMatrixGroup(gp,2);
+Group([ <an immutable 3x3 matrix over GF2>,
+  <an immutable 3x3 matrix over GF2> ])
+gap> FittingFreeLiftSetup(gp2);;Size(gp2);
+168
+gap> gp4:=ModularImageMatrixGroup(gp,4);;
+gap> FittingFreeLiftSetup(gp4);;Size(gp4);
+168
+\end{verbatim}
+
+We note that the image $\varphi_2(H)$ modulo $2$ has full order
+$|\SL(3,2)|$; thus $2\not\in\Pi(H)$.
+On the other hand, the image $\varphi_4(H)$ modulo $4$ is a proper
+subgroup of $\SL(3,\Z/4\Z)$, since $|\varphi_4(H)|<|\SL(3,\Z/4\Z)|$.
+Thus $2\in\pi(M)$.
+
+%[\textbf{AD}: in [Density] it is PrimeForDense]
+
+\mycmd{{\tt PrimesForDense(H,t[,kind])}}
+takes an integral matrix group $H$ and returns $\Pi(H)$.
+The element
+{\tt t} must be a transvection in $H$.
+\begin{verbatim}
+gap> PrimesForDense(h,t);
+[ 3, 73 ]
+\end{verbatim}
+
+
+\mycmd{{\tt MaxPCSPrimes(H,primes,[,kind])}}
+takes an integral matrix group $H$ of dimension $\ge 3$ and the set $\pi(M)$ of primes dividing
+the level $M$ of $\bar H$ and returns a list of length 2, containing the
+level and index of (the arithmetic closure of) $H$.
+
+\begin{verbatim}
+gap> MaxPCSPrimes(h,[3,73]);
+[ 1971, 33180341688 ]
+\end{verbatim}
+
+If only a subset of $\pi(M)$ is given, only these primes are considered,
+leading to a divisor of level and index.
+
+\begin{verbatim}
+gap> MaxPCSPrimes(gp,[2,3,5,19]);
+[ 5700, 242646091084800000 ]
+gap> MaxPCSPrimes(gp,[3,5,19]);
+[ 1425, 947836293300000 ]
+\end{verbatim}
+
+If the option {\tt quotient} is given, the function returns a list of length
+three with the extra third entry being the congruence quotient modulo the level
+$M$.
+
+\begin{verbatim}
+gap> q:=MaxPCSPrimes(h,[3,73]:quotient);
+[ 1971, 33180341688, <matrix group of size 5874712004650752 with
+    3 generators> ]
+gap> Size(SL(3,Integers mod 1971))/Size(q[3]);
+33180341688
+\end{verbatim}
+
+\section{Further Examples}
+
+\mycmd{{\tt BetaT(t)}}
+returns the group $\beta_T(\Gamma)$ of \cite{LongReidI}.
+\begin{verbatim}
+gap> h:=BetaT(1);
+gap> PrimesNonSurjective(h);
+[5]
+gap> MaxPCSPrimes(h,[5],SL);
+[ 5, 31 ]
+\end{verbatim}
+As the index is small we can verify arithmeticity by coset enumeration:
+
+\begin{verbatim}
+gap> hom:=SLNZFP(3);;
+gap> w:=List(GeneratorsOfGroup(h),x->HNFWord(hom,x));
+[ t13^-1*t31*(t12*t21^-1*t12)^2*t12*t32*t23^-2,
+  t21*t31^-1*(t21^-1*t12^2)^2*t23^-1*(t32^-1*t23^2)^2,
+  t12^-1*t21*t23^-1*t32*t23^-1*t13^2 ]
+gap> u:=Subgroup(Source(hom),w);
+Group([ t13^-1*t31*(t12*t21^-1*t12)^2*t12*t32*t23^-2,
+  t21*t31^-1*(t21^-1*t12^2)^2*t23^-1*(t32^-1*t23^2)^2,
+  t12^-1*t21*t23^-1*t32*t23^-1*t13^2 ])
+gap> Index(Source(hom),u);
+31
+\end{verbatim}
+
+Such a calculation will be increasingly difficult as the index grows; for
+example determining the index $3670016$ of $\beta_{-2}(\Gamma)$ takes a
+couple of minutes and any attempt for $\beta_{7}(\Gamma)$ will be hopeless
+because of the large index.
+
+\mycmd{{\tt RhoK(k)}}
+returns the group $\rho_k(\Gamma)$ of \cite{LongReidI}.
+
+\mycmd{{\tt HofmannStraatenExample(d,k)}}
+returns the group $G(d,k)$ of \cite{HofStrat}.
+\begin{verbatim}
+gap> h:=HofmannStraatenExample(12,7);;IsTransvection(h.2);
+true
+gap> PrimesForDense(h,h.2,SP);
+[ 2, 3 ]
+gap> MaxPCSPrimes(h,[2,3],SP);
+[ 288, 2388787200 ]
+\end{verbatim}
+
+\bibliographystyle{amsplain}
+
+\begin{thebibliography}{10}
+
+\bibitem{Arithm}
+A.~S. Detinko, D.~L. Flannery, and A.~ Hulpke, \textit{Algorithms for
+arithmetic groups with the congruence subgroup property}, J. Algebra \textbf{421} (2015), 234--259.
+
+\bibitem{Density}
+A.~S. Detinko, D.~L. Flannery, and A.~ Hulpke, 
+\textit{Zariski density and computing in arithmetic groups}, Math. Comp.,
+\url{https://doi.org/10.1090/mcom/3236}.
+
+\bibitem{MFO}
+A.~S. Detinko, D.~L. Flannery, and A.~ Hulpke, \textit{Experimenting with
+Zariski dense subgroups}, %Oberwolfach preprint,
+in preparation.
+
+\bibitem{Gap}
+The GAP~Group, {GAP} -- {G}roups, {A}lgorithms, and {P}rogramming,
+\noindent
+\url{http://www.gap-system.org}
+
+\bibitem{HofStrat}
+J.~Hofmann and D.~van Straten, \textit{Some monodromy groups of finite
+index in $\Sp_4(\Z)$}, \url{http://arxiv.org/abs/1312.3063v1}.
+
+\bibitem{LongReidI}
+D.~D.~Long, A.~W.~Reid, \textit{Small subgroups of $\SL(3, \mathbb{Z})$}, 
+Exper. Math.  \textbf{20} (2011),
+no.~4, 412--425.
+
+\bibitem{Matthews}
+C.~Matthews, L.~N.~Vaserstein, and B.~Weisfeiler, \textit{Congruence
+properties of Zariski-dense subgroups. I}, Proc. London Math. Soc. (3)
+\textbf{48} (1984), no.~3, 514--532.
+
+
+\bibitem{Rivin1}
+I.~Rivin, \textit{Large Galois groups with applications to Zariski
+density}, \url{http://arxiv.org/abs/1312.3009v4}
+
+\end{thebibliography}
+
+\end{document}
+
+\mycmd{{\tt ASOrbit}}
+\mycmd{{\tt ASStabilizerGens}}
+
