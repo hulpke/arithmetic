@@ -1,5 +1,5 @@
 # Functionality for arithmetic groups, based on papers by AD,DF,AH
-ARITHVERSION:="1.9";
+ARITHVERSION:="1.9a";
 # November 2018
 
 DeclareInfoClass("InfoArithSub");
@@ -2325,7 +2325,7 @@ end;
 
 # utility fct to find irrelevant prime
 DetermineIrrelevantPrime:=function(H,kind,bound)
-local test,irr,good,bad,HM,f,dim;
+local test,irr,good,bad,HM,f,dim,localizations,i,j,g;
 
   # caching
   if IsBound(H!.IrrprimeInfo) and H!.IrrprimeInfo.irr>bound and
@@ -2345,9 +2345,21 @@ local test,irr,good,bad,HM,f,dim;
     end;
   fi;
 
+  localizations:=[];
+  for g in GeneratorsOfGroup(H) do
+    for i in g do
+      for j in i do
+        f:=DenominatorRat(j);
+        if f>1 then
+          AddSet(localizations,f);
+        fi;
+      od;
+    od;
+  od;
+
   dim:=Length(One(H));
   good:=[];
-  bad:=[];
+  bad:=ShallowCopy(localizations);
 
   f:=ValueOption("densitytest");
   if f<>fail then
@@ -2398,7 +2410,8 @@ local test,irr,good,bad,HM,f,dim;
     until not irr in good and irr>bound;
   fi;
   Info(InfoArithSub,1,"irrelevant prime ",irr);
-  irr:=rec(irr:=irr,good:=good,bad:=bad,test:=test,kind:=kind);
+  irr:=rec(irr:=irr,good:=good,bad:=bad,test:=test,kind:=kind,
+           localizations:=localizations);
   H!.IrrprimeInfo:=irr;
   return irr;
 end;
@@ -3575,6 +3588,7 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
       if HM=1 then primes:=[];
       elif primes=fail then primes:=Set(Factors(HM));
       else primes:=Intersection(primes,Factors(HM));fi;
+      primes:=Difference(primes,irr.localizations);
       if cnt>3 and Length(primes)>0 then
 	cnt:=Maximum(cnt,5*RootInt(Maximum(primes),3));
       elif cnt=1 and ForAny(primes,x->x>200) then
