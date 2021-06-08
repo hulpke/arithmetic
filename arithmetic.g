@@ -1,6 +1,6 @@
 # Functionality for arithmetic groups, based on papers by AD,DF,AH
-ARITHVERSION:="1.9a";
-# November 2018
+ARITHVERSION:="1.10";
+# August 2020
 
 DeclareInfoClass("InfoArithSub");
 SetInfoLevel(InfoArithSub,1);
@@ -305,7 +305,7 @@ end;
 
 MaxPCSPrimes :=function(arg)
 local H,primes,kind,class,i,n,m,ind,idx,ids,ring,gens,Q,first,r,good,used,
-      classize,delta,parts,a,lastgp,result,delcache,layerlimit;
+      classize,delta,parts,a,lastgp,result,delcache,layerlimit,needsq;
 
   delcache:=[];
   delta:=function(ring)
@@ -325,7 +325,9 @@ local H,primes,kind,class,i,n,m,ind,idx,ids,ring,gens,Q,first,r,good,used,
       Q:=Group(()); # trivial group
     else
       Q:=Group(gens);
-      if IsPrimeInt(Size(ring)) then
+      if ValueOption("basic")=true then
+        Size(Q);
+      elif IsPrimeInt(Size(ring)) then
 	r:=RecognizeGroup(Q); # here recognition alone will give the order as we work modulo prime
 	SetSize(Q,Size(r));
       else
@@ -342,19 +344,27 @@ if ForAny(delcache,x->x[1] mod Size(ring)=0 and x[2]<Q) then Error("huch");fi;
   end;
 
   H:=arg[1];
-  primes:=arg[2];
   kind:=CheckProperKind(arg,3);
+  if not IsBound(arg[2]) or arg[2]=fail then
+ 
+    primes:=PrimesNonSurjective(H);
+  else
+    primes:=arg[2];
+  fi;
+  needsq:=[2];
 
   n:=Length(One(H));
   if n=2 then 
-    Info(InfoWarning,1,"Warning:\n",
-    "The congruence subgroup property does not hold in dimension 2\n");
+    Info(InfoWarning,1,"Warning:\n    ",
+    "The congruence subgroup property does not hold in dimension 2");
+    Add(needsq,3); # in dim 2 also 3 is a special case
   fi;
 
   classize:=ring->Size(class(n,ring));
   if kind=SL then
     class:=SL;
     layerlimit:=n^2-1;
+    if n=2 then layerlimit:=2*layerlimit;fi;
   else
     layerlimit:=(n+1)*n/2;
     class:=SP;
@@ -389,7 +399,8 @@ if idx>ind and ValueOption("level")<>fail and not ValueOption("level") mod
 (i^a)=0 then
   Error("nodiv!");
 fi;
-    until idx=ind and (i<>2 or a>1); # for p=2 also test a=2
+    until idx=ind and (a>1 or not i in needsq); # for p=2 (3 in dim 2) 
+                                                # also test a=2
     if idx>1 then
       # prime is of interest
       AddSet(good,i);
@@ -397,6 +408,7 @@ fi;
     fi;
     ids[i]:=idx;
   od;
+
   if Length(good)=0 then
     return [1,1];
     Error("no prime OK");
@@ -429,8 +441,8 @@ fi;
       result:=lastgp;
       while Length(good)>0 do
         i:=Minimum(good);
-        Info(InfoArithSub,1,"Try ",m," ",i);
         idx:=delta(Integers mod (m*i));
+        Info(InfoArithSub,1,"Try ",m," ",i," -> ",idx);
         if idx>ind then result:=lastgp;fi;
         if idx>ind then
           result:=lastgp;
@@ -444,6 +456,34 @@ fi;
 
 
   fi;
+
+  # primes not caught -- this is basically 2 or 3 in small dim
+  a:=Difference(primes,good);
+  if n<=3 then AddSet(a,2);fi;
+  if n<=2 then AddSet(a,3);fi;
+  a:=Difference(a,H!.IrrprimeInfo.bad);
+  for i in a do
+    Info(InfoArithSub,1,"Try extra ",i);
+    if (n<4 and i=2) or (n=2 and i=3) then
+      idx:=delta(Integers mod (i^2*m));
+      if idx>ind then
+        ind:=idx;
+        if delta(Integers mod (i*m))=idx then
+          m:=m*i;
+        else
+          m:=m*i^2;
+        fi;
+      fi;
+    else
+      idx:=delta(Integers mod (i*m));
+      if idx>ind then
+        ind:=idx;
+        m:=m*i;
+      fi;
+    fi;
+    
+  od;
+
 
   Info(InfoArithSub,1,"Level = ",m," = ");
   if InfoLevel(InfoArithSub)>0 then PrintFactorsInt(m);Print("\n"); fi;
@@ -1023,47 +1063,60 @@ end;
 
 SLNZFP:=function(n)
 local t,geni,m,gens,f,rels,i,j,k,l,mat,mats,id,hom,inv;
-  t:=function(i,j)
-    return gens[geni[i][j]];
-  end;
-  geni:=List([1..n],x->[]);
-  mats:=[];
-  id:=IdentityMat(n,1);
-  m:=0;
-  gens:=[];
-  for i in [1..n] do
-    for j in [1..n] do
-      if j<>i then
-	m:=m+1;
-	geni[i][j]:=m;
-	Add(gens,Concatenation("t",String(i),String(j)));
-	mat:=List(id,ShallowCopy);
-	mat[i][j]:=1;
-	Add(mats,mat);
-      fi;
-    od;
-  od;
-  f:=FreeGroup(gens);
-  gens:=GeneratorsOfGroup(f);
-  rels:=[];
-  for i in [1..n] do
-    for j in Difference([1..n],[i]) do
-      for k in Difference([1..n],[j]) do
-	for l in Difference([1..n],[i,k]) do
-	  if i>k or j>l then
-	    Add(rels,Comm(t(i,j),t(k,l)));
-	  fi;
-	od;
-	if k<>i then
-	  Add(rels,Comm(t(i,j),t(j,k))/t(i,k));
-	fi;
+  # for 2, get the nice pres
+  if n=2 then
+    f:=FreeGroup("S","T");
+    rels:=ParseRelators(f, "S^4, (S^3*T)^3, S^2*T*S^-2*T^-1");
+    t:=f/rels;
+    gens:=ShallowCopy(GeneratorsOfGroup(t));
+    Add(gens,t.1^2*t.2/t.1*t.2);
+    mats:=[[[0,-1],[1,0]],[[1,1],[0,1]],[[1,0],[1, 1]]];
+    geni:=[[,2],[3]];
+  else
+    geni:=List([1..n],x->[]);
+    t:=function(i,j)
+      return gens[geni[i][j]];
+    end;
+    mats:=[];
+    id:=IdentityMat(n,1);
+    m:=0;
+    gens:=[];
+    for i in [1..n] do
+      for j in [1..n] do
+        if j<>i then
+          m:=m+1;
+          geni[i][j]:=m;
+          Add(gens,Concatenation("t",String(i),String(j)));
+          mat:=List(id,ShallowCopy);
+          mat[i][j]:=1;
+          Add(mats,mat);
+        fi;
       od;
     od;
-  od;
-  Add(rels,(t(1,2)/t(2,1)*t(1,2))^4);
-  t:=f/rels;
+    f:=FreeGroup(gens);
+    gens:=GeneratorsOfGroup(f);
+    rels:=[];
+    for i in [1..n] do
+      for j in Difference([1..n],[i]) do
+        for k in Difference([1..n],[j]) do
+          for l in Difference([1..n],[i,k]) do
+            if i>k or j>l then
+              Add(rels,Comm(t(i,j),t(k,l)));
+            fi;
+          od;
+          if k<>i then
+            Add(rels,Comm(t(i,j),t(j,k))/t(i,k));
+          fi;
+        od;
+      od;
+    od;
+    Add(rels,(t(1,2)/t(2,1)*t(1,2))^4);
+    t:=f/rels;
+    gens:=GeneratorsOfGroup(t);
+  fi;
+
   m:=Group(mats);
-  hom:=GroupHomomorphismByImages(t,m,GeneratorsOfGroup(t),mats);
+  hom:=GroupHomomorphismByImages(t,m,gens,mats);
   hom!.tIndex:=geni;
   inv:=GroupHomomorphismByFunction(m,t,function(mat)
     return WordSL(hom,mat);
@@ -2325,7 +2378,7 @@ end;
 
 # utility fct to find irrelevant prime
 DetermineIrrelevantPrime:=function(H,kind,bound)
-local test,irr,good,bad,HM,f,dim,localizations,i,j,g;
+local test,irr,ind,good,bad,HM,f,dim;
 
   # caching
   if IsBound(H!.IrrprimeInfo) and H!.IrrprimeInfo.irr>bound and
@@ -2333,6 +2386,66 @@ local test,irr,good,bad,HM,f,dim,localizations,i,j,g;
     return H!.IrrprimeInfo;
   fi;
   kind:=CheckProperKind([H,kind],2);
+
+  dim:=Length(One(H));
+  good:=[];
+  bad:=List(Flat(GeneratorsOfGroup(H)),DenominatorRat);
+  bad:=AbsInt(Lcm(bad));
+  bad:=Difference(Set(Factors(bad)),[1]);
+
+  if ValueOption("badprimes")<>fail then
+    bad:=Union(bad,ValueOption("badprimes"));
+  fi;
+
+  # special treatment of 2,3 in small dimensions
+  if dim<4 then
+
+    irr:=1;
+    if dim=3 then
+      if not 2 in bad then irr:=4;fi;
+    elif dim=2 then 
+      if 2 in bad then
+        irr:=9;
+      elif 3 in bad then
+        irr:=4;
+      else
+        irr:=36;
+      fi;
+    fi;
+    if irr>1 then
+
+      test:=function(modulus)
+        local a;
+          a:=Integers mod modulus;
+          a:=List(GeneratorsOfGroup(H),x->ZmodnZMat(a,x));
+          a:=Group(a);
+          if ForAny(GeneratorsOfGroup(a),x->not IsOne(x)) then
+            FittingFreeLiftSetup(a);
+          fi;
+          if kind=SL then
+            return Size(SL(dim,Integers mod modulus))/Size(a);
+          elif kind=SP then
+            return Size(SP(dim,Integers mod modulus))/Size(a);
+          else Error("kind");fi;
+        end;
+
+      ind:=test(irr);
+      if ind>1 then
+        if irr=36 then # 2/3 case
+          if ind=test(4) then
+            AddSet(good,2);
+          elif ind=test(9) then
+            AddSet(good,3);
+          else
+            AddSet(good,2);
+            AddSet(good,3);
+          fi;
+        else
+          AddSet(good,SmallestPrimeDivisor(irr));
+        fi;
+      fi;
+    fi;
+  fi;
 
   if kind=SL then
     test:=IsNaturalSL;
@@ -2345,22 +2458,6 @@ local test,irr,good,bad,HM,f,dim,localizations,i,j,g;
     end;
   fi;
 
-  localizations:=[];
-  for g in GeneratorsOfGroup(H) do
-    for i in g do
-      for j in i do
-        f:=DenominatorRat(j);
-        if f>1 then
-          AddSet(localizations,f);
-        fi;
-      od;
-    od;
-  od;
-
-  dim:=Length(One(H));
-  good:=[];
-  bad:=ShallowCopy(localizations);
-
   f:=ValueOption("densitytest");
   if f<>fail then
     irr:=false;
@@ -2368,21 +2465,17 @@ local test,irr,good,bad,HM,f,dim,localizations,i,j,g;
     irr:=ValueOption("irrelevant");
   fi;
 
-  if ValueOption("badprimes")<>fail then
-    bad:=ValueOption("badprimes");
-  fi;
-
   if irr=fail then
     irr:=1;
     repeat
       repeat
         irr:=NextPrimeInt(irr); 
-      until not irr in bad; # avoid preset bad primes
+      until not irr in bad and not irr in good; # avoid preset/known primes
 
       Info(InfoArithSub,2,"Try irr=",irr);
 
       if irr=10007 then # first prime >10000. 
-        if ValueOption("mayfail") then return fail;fi;
+        if ValueOption("mayfail")=true then return fail;fi;
         # maybe its not dense
         if not IsDenseIR2(H) then
           Error("The input group is not dense");
@@ -2391,27 +2484,11 @@ local test,irr,good,bad,HM,f,dim,localizations,i,j,g;
 
       HM:=List(GeneratorsOfGroup(H),x->x*Z(irr)^0);
       HM:=Group(HM);
-      if not test(HM) then Add(good,irr);
-      elif irr=2 and dim<=4  then
-        # special treatment of 2 -- need to use mod 4:
-        HM:=Integers mod 4;
-        HM:=List(GeneratorsOfGroup(H),x->ZmodnZMat(HM,x));
-
-        HM:=Group(HM);
-        if ForAny(GeneratorsOfGroup(HM),x->not IsOne(x)) then
-          FittingFreeLiftSetup(HM);
-        fi;
-        if (kind=SL and Size(HM)<Size(SL(dim,Integers mod 4)))
-          or (kind=SP and Size(HM)<Size(SP(dim,Integers mod 4))) then
-          Add(good,2);
-        fi;
-      else Add(bad,irr);
-      fi;
+      if not test(HM) then Add(good,irr);fi;
     until not irr in good and irr>bound;
   fi;
   Info(InfoArithSub,1,"irrelevant prime ",irr);
-  irr:=rec(irr:=irr,good:=good,bad:=bad,test:=test,kind:=kind,
-           localizations:=localizations);
+  irr:=rec(irr:=irr,good:=good,bad:=bad,test:=test,kind:=kind);
   H!.IrrprimeInfo:=irr;
   return irr;
 end;
@@ -3588,7 +3665,6 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
       if HM=1 then primes:=[];
       elif primes=fail then primes:=Set(Factors(HM));
       else primes:=Intersection(primes,Factors(HM));fi;
-      primes:=Difference(primes,irr.localizations);
       if cnt>3 and Length(primes)>0 then
 	cnt:=Maximum(cnt,5*RootInt(Maximum(primes),3));
       elif cnt=1 and ForAny(primes,x->x>200) then
