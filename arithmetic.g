@@ -1,6 +1,6 @@
 # Functionality for arithmetic groups, based on papers by AD,DF,AH
-ARITHVERSION:="1.10";
-# August 2020
+ARITHVERSION:="1.11";
+# June 2021
 
 DeclareInfoClass("InfoArithSub");
 SetInfoLevel(InfoArithSub,1);
@@ -302,202 +302,6 @@ fp,fpgens,words,k,sol,det,odet,reducer,dens;
   Info(InfoArithSub,3,"Zlatt Done");
   return HM;
 end;
-
-MaxPCSPrimes :=function(arg)
-local H,primes,kind,class,i,n,m,ind,idx,ids,ring,gens,Q,first,r,good,used,
-      classize,delta,parts,a,lastgp,result,delcache,layerlimit,needsq;
-
-  delcache:=[];
-  delta:=function(ring)
-  local gens,Q;
-    Q:=Size(ring);
-    gens:=First(delcache,x->x[1]=Q);
-    if gens<>fail then return gens[2];fi;
-
-    gens:=List(GeneratorsOfGroup(H),x->x*One(ring));
-    if IsPrimeInt(Q) then
-      gens:=List(gens,x->ImmutableMatrix(ring,x));
-    else
-      gens:=List(gens,x->ZmodnZMat(ring,x));
-    fi;
-    
-    if ForAll(gens,IsOne) then
-      Q:=Group(()); # trivial group
-    else
-      Q:=Group(gens);
-      if ValueOption("basic")=true then
-        Size(Q);
-      elif IsPrimeInt(Size(ring)) then
-	r:=RecognizeGroup(Q); # here recognition alone will give the order as we work modulo prime
-	SetSize(Q,Size(r));
-      else
-	FittingFreeLiftSetup(Q:layerlimit:=layerlimit); # also gives order
-      fi;
-    fi;
-    lastgp:=Q;
-    Info(InfoArithSub,3,"For ",Collected(Factors(Size(ring))),":",
-      classize(ring)," ",Size(Q),":",classize(ring)/Size(Q));
-    Q:=classize(ring)/Size(Q);
-if ForAny(delcache,x->x[1] mod Size(ring)=0 and x[2]<Q) then Error("huch");fi;
-    AddSet(delcache,[Size(ring),Q]);
-    return Q;
-  end;
-
-  H:=arg[1];
-  kind:=CheckProperKind(arg,3);
-  if not IsBound(arg[2]) or arg[2]=fail then
- 
-    primes:=PrimesNonSurjective(H);
-  else
-    primes:=arg[2];
-  fi;
-  needsq:=[2];
-
-  n:=Length(One(H));
-  if n=2 then 
-    Info(InfoWarning,1,"Warning:\n    ",
-    "The congruence subgroup property does not hold in dimension 2");
-    Add(needsq,3); # in dim 2 also 3 is a special case
-  fi;
-
-  classize:=ring->Size(class(n,ring));
-  if kind=SL then
-    class:=SL;
-    layerlimit:=n^2-1;
-    if n=2 then layerlimit:=2*layerlimit;fi;
-  else
-    layerlimit:=(n+1)*n/2;
-    class:=SP;
-    if n=4 then
-      classize:=ring->Size(ring)^10
-        *Product(Set(Factors(Size(ring))),p->(1-p^-2)*(1-p^-4));
-    else
-      # formula from
-      # https://mathoverflow.net/questions/87904/is-there-a-formula-for-the-size-of-symplectic-group-defined-over-a-ring-z-pk-z
-      classize:=ring->
-	Product(Collected(Factors(Size(ring))),x->
-	  x[1]^((2*x[2]-1)*n^2/4+(x[2]-1)*n/2)
-	    *Product([1..n/2],i->(x[1]^(2*i)-1)));
-    fi;
-  fi;
-
-  #MuP-part
-  good:=[];
-  parts:=[];
-  ids:=[];
-  for i in primes do
-    idx:=1;
-    a:=0;
-    repeat
-      ind:=idx;
-      a:=a+1;
-      Info(InfoArithSub,1,"Try ",i,"^",a);
-      ring:=Integers mod i^a;
-      idx:=delta(ring);
-      if idx>ind then result:=lastgp;fi;
-if idx>ind and ValueOption("level")<>fail and not ValueOption("level") mod
-(i^a)=0 then
-  Error("nodiv!");
-fi;
-    until idx=ind and (a>1 or not i in needsq); # for p=2 (3 in dim 2) 
-                                                # also test a=2
-    if idx>1 then
-      # prime is of interest
-      AddSet(good,i);
-      parts[i]:=a-1;
-    fi;
-    ids[i]:=idx;
-  od;
-
-  if Length(good)=0 then
-    return [1,1];
-    Error("no prime OK");
-  elif Length(good)=1 then
-    m:=good[1]^parts[good[1]];
-    ind:=ids[good[1]];
-  else
-
-    # multiple primes -- lcm
-    m:=Product(good,i->i^parts[i]);
-
-    # now first extend by all primes once. If the delta is always the same (larger prime-power
-    # will yield prime-power index factor as we intersect in kernel), it must be the same as index
-    # for m and we're done
-    Info(InfoArithSub,1,"Try ",m," ",good[1]);
-    ind:=delta(Integers mod (m*good[1]));
-    result:=lastgp;
-    idx:=ind;
-    i:=2;
-    while i<=Length(good) and idx=ind do
-      Info(InfoArithSub,1,"Try ",m," ",good[i]);
-      idx:=delta(Integers mod (m*good[i]));
-      i:=i+1;
-    od;
-    if idx<>ind then
-      # indices differed, so we need to go through systematically
-      # this will happen rarely
-      Info(InfoArithSub,1,"Try ",m);
-      ind:=delta(Integers mod m);
-      result:=lastgp;
-      while Length(good)>0 do
-        i:=Minimum(good);
-        idx:=delta(Integers mod (m*i));
-        Info(InfoArithSub,1,"Try ",m," ",i," -> ",idx);
-        if idx>ind then result:=lastgp;fi;
-        if idx>ind then
-          result:=lastgp;
-          ind:=idx;
-          m:=m*i;
-        else
-          good:=Difference(good,[i]);
-        fi;
-      od;
-    fi;
-
-
-  fi;
-
-  # primes not caught -- this is basically 2 or 3 in small dim
-  a:=Difference(primes,good);
-  if n<=3 then AddSet(a,2);fi;
-  if n<=2 then AddSet(a,3);fi;
-  a:=Difference(a,H!.IrrprimeInfo.bad);
-  for i in a do
-    Info(InfoArithSub,1,"Try extra ",i);
-    if (n<4 and i=2) or (n=2 and i=3) then
-      idx:=delta(Integers mod (i^2*m));
-      if idx>ind then
-        ind:=idx;
-        if delta(Integers mod (i*m))=idx then
-          m:=m*i;
-        else
-          m:=m*i^2;
-        fi;
-      fi;
-    else
-      idx:=delta(Integers mod (i*m));
-      if idx>ind then
-        ind:=idx;
-        m:=m*i;
-      fi;
-    fi;
-    
-  od;
-
-
-  Info(InfoArithSub,1,"Level = ",m," = ");
-  if InfoLevel(InfoArithSub)>0 then PrintFactorsInt(m);Print("\n"); fi;
-  Info(InfoArithSub,1,"Index = ",ind," = ");
-  if InfoLevel(InfoArithSub)>0 then PrintFactorsInt(ind);Print("\n"); fi;
-  if ValueOption("quotient")<>fail then
-    return [m,ind,result];
-  else
-    return [m,ind];
-  fi;
-
-end;
-
-LevelMaxPCS := MaxPCSPrimes ;
 
 # Part 3: Orbit/Stabilizer
 
@@ -1037,7 +841,7 @@ local phom,left,right,one,norm2dist,red,norm,n,i,slhom,a,b,factorrad;
     phom:=hom!.phom;
   else
     factorrad:=ValueOption("factorrad");
-    if factorrad=fail then factorrad:=3;fi;
+    if factorrad=fail then factorrad:=4;fi;
     phom:=SlSPDecompExtraGenHom(hom,factorrad);
     hom!.phom:=phom;
   fi;
@@ -1133,7 +937,7 @@ WordSP:=function(hom,elm)
 local phom,left,right,one,norm2dist,red,norm,n,i,slhom,a,b,factorrad;
 
   factorrad:=ValueOption("factorrad");
-  if factorrad=fail then factorrad:=3;fi;
+  if factorrad=fail then factorrad:=4;fi;
   n:=Length(elm);
   #phom:=SlSPDecompExtraGenHom(hom,3);
   a:=MappingGeneratorsImages(hom);
@@ -3731,6 +3535,206 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
 
   return good;
 end;
+
+MaxPCSPrimes :=function(arg)
+local H,primes,kind,class,i,n,m,ind,idx,ids,ring,gens,Q,first,r,good,used,
+      classize,delta,parts,a,lastgp,result,delcache,layerlimit,needsq;
+
+  delcache:=[];
+  delta:=function(ring)
+  local gens,Q;
+    Q:=Size(ring);
+    gens:=First(delcache,x->x[1]=Q);
+    if gens<>fail then return gens[2];fi;
+
+    gens:=List(GeneratorsOfGroup(H),x->x*One(ring));
+    if IsPrimeInt(Q) then
+      gens:=List(gens,x->ImmutableMatrix(ring,x));
+    else
+      gens:=List(gens,x->ZmodnZMat(ring,x));
+    fi;
+    
+    if ForAll(gens,IsOne) then
+      Q:=Group(()); # trivial group
+    else
+      Q:=Group(gens);
+      if ValueOption("basic")=true then
+        Size(Q);
+      elif IsPrimeInt(Size(ring)) then
+	r:=RecognizeGroup(Q); # here recognition alone will give the order as we work modulo prime
+	SetSize(Q,Size(r));
+      else
+	FittingFreeLiftSetup(Q:layerlimit:=layerlimit); # also gives order
+      fi;
+    fi;
+    lastgp:=Q;
+    Info(InfoArithSub,3,"For ",Collected(Factors(Size(ring))),":",
+      classize(ring)," ",Size(Q),":",classize(ring)/Size(Q));
+    Q:=classize(ring)/Size(Q);
+if ForAny(delcache,x->x[1] mod Size(ring)=0 and x[2]<Q) then Error("huch");fi;
+    AddSet(delcache,[Size(ring),Q]);
+    return Q;
+  end;
+
+  H:=arg[1];
+  kind:=CheckProperKind(arg,3);
+  if not IsBound(arg[2]) or arg[2]=fail then
+ 
+    primes:=PrimesNonSurjective(H);
+  else
+    primes:=arg[2];
+  fi;
+  if not IsBound(H!.IrrprimeInfo) then
+    DetermineIrrelevantPrime(H,kind,2);
+  fi;
+
+  needsq:=[2];
+
+  n:=Length(One(H));
+  if n=2 then 
+    Info(InfoWarning,1,"Warning:\n    ",
+    "The congruence subgroup property does not hold in dimension 2");
+    Add(needsq,3); # in dim 2 also 3 is a special case
+  fi;
+
+  classize:=ring->Size(class(n,ring));
+  if kind=SL then
+    class:=SL;
+    layerlimit:=n^2-1;
+    if n=2 then layerlimit:=2*layerlimit;fi;
+  else
+    layerlimit:=(n+1)*n/2;
+    class:=SP;
+    if n=4 then
+      classize:=ring->Size(ring)^10
+        *Product(Set(Factors(Size(ring))),p->(1-p^-2)*(1-p^-4));
+    else
+      # formula from
+      # https://mathoverflow.net/questions/87904/is-there-a-formula-for-the-size-of-symplectic-group-defined-over-a-ring-z-pk-z
+      classize:=ring->
+	Product(Collected(Factors(Size(ring))),x->
+	  x[1]^((2*x[2]-1)*n^2/4+(x[2]-1)*n/2)
+	    *Product([1..n/2],i->(x[1]^(2*i)-1)));
+    fi;
+  fi;
+
+  #MuP-part
+  good:=[];
+  parts:=[];
+  ids:=[];
+  for i in primes do
+    idx:=1;
+    a:=0;
+    repeat
+      ind:=idx;
+      a:=a+1;
+      Info(InfoArithSub,1,"Try ",i,"^",a);
+      ring:=Integers mod i^a;
+      idx:=delta(ring);
+      if idx>ind then result:=lastgp;fi;
+if idx>ind and ValueOption("level")<>fail and not ValueOption("level") mod
+(i^a)=0 then
+  Error("nodiv!");
+fi;
+    until idx=ind and (a>1 or not i in needsq); # for p=2 (3 in dim 2) 
+                                                # also test a=2
+    if idx>1 then
+      # prime is of interest
+      AddSet(good,i);
+      parts[i]:=a-1;
+    fi;
+    ids[i]:=idx;
+  od;
+
+  if Length(good)=0 then
+    return [1,1];
+    Error("no prime OK");
+  elif Length(good)=1 then
+    m:=good[1]^parts[good[1]];
+    ind:=ids[good[1]];
+  else
+
+    # multiple primes -- lcm
+    m:=Product(good,i->i^parts[i]);
+
+    # now first extend by all primes once. If the delta is always the same (larger prime-power
+    # will yield prime-power index factor as we intersect in kernel), it must be the same as index
+    # for m and we're done
+    Info(InfoArithSub,1,"Try ",m," ",good[1]);
+    ind:=delta(Integers mod (m*good[1]));
+    result:=lastgp;
+    idx:=ind;
+    i:=2;
+    while i<=Length(good) and idx=ind do
+      Info(InfoArithSub,1,"Try ",m," ",good[i]);
+      idx:=delta(Integers mod (m*good[i]));
+      i:=i+1;
+    od;
+    if idx<>ind then
+      # indices differed, so we need to go through systematically
+      # this will happen rarely
+      Info(InfoArithSub,1,"Try ",m);
+      ind:=delta(Integers mod m);
+      result:=lastgp;
+      while Length(good)>0 do
+        i:=Minimum(good);
+        idx:=delta(Integers mod (m*i));
+        Info(InfoArithSub,1,"Try ",m," ",i," -> ",idx);
+        if idx>ind then result:=lastgp;fi;
+        if idx>ind then
+          result:=lastgp;
+          ind:=idx;
+          m:=m*i;
+        else
+          good:=Difference(good,[i]);
+        fi;
+      od;
+    fi;
+
+
+  fi;
+
+  # primes not caught -- this is basically 2 or 3 in small dim
+  a:=Difference(primes,good);
+  if n<=3 then AddSet(a,2);fi;
+  if n<=2 then AddSet(a,3);fi;
+  a:=Difference(a,H!.IrrprimeInfo.bad);
+  for i in a do
+    Info(InfoArithSub,1,"Try extra ",i);
+    if (n<4 and i=2) or (n=2 and i=3) then
+      idx:=delta(Integers mod (i^2*m));
+      if idx>ind then
+        ind:=idx;
+        if delta(Integers mod (i*m))=idx then
+          m:=m*i;
+        else
+          m:=m*i^2;
+        fi;
+      fi;
+    else
+      idx:=delta(Integers mod (i*m));
+      if idx>ind then
+        ind:=idx;
+        m:=m*i;
+      fi;
+    fi;
+    
+  od;
+
+
+  Info(InfoArithSub,1,"Level = ",m," = ");
+  if InfoLevel(InfoArithSub)>0 then PrintFactorsInt(m);Print("\n"); fi;
+  Info(InfoArithSub,1,"Index = ",ind," = ");
+  if InfoLevel(InfoArithSub)>0 then PrintFactorsInt(ind);Print("\n"); fi;
+  if ValueOption("quotient")<>fail then
+    return [m,ind,result];
+  else
+    return [m,ind];
+  fi;
+
+end;
+
+LevelMaxPCS := MaxPCSPrimes ;
 
 # Part 6: Utility functions that eventually should go into GAP
 
