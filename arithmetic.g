@@ -1,6 +1,6 @@
 # Functionality for arithmetic groups, based on papers by AD,DF,AH
-ARITHVERSION:="1.11";
-# June 2021
+ARITHVERSION:="1.12";
+# August 2021
 
 DeclareInfoClass("InfoArithSub");
 SetInfoLevel(InfoArithSub,1);
@@ -2202,10 +2202,10 @@ local test,irr,ind,good,bad,HM,f,dim;
   fi;
 
   # special treatment of 2,3 in small dimensions
-  if dim<4 then
+  if dim<=4 then
 
     irr:=1;
-    if dim=3 then
+    if dim=3 or dim=4 then
       if not 2 in bad then irr:=4;fi;
     elif dim=2 then 
       if 2 in bad then
@@ -3369,11 +3369,51 @@ AdjointReduciblePrimes:=function(G,kind)
   return Set(Factors(NumberAdjointReducible(G,kind)));
 end;
 
+ASDoDelta:=function(H,classize,delcache,ring,layerlimit)
+local gens,Q,r,lastgp;
+  Q:=Size(ring);
+  gens:=First(delcache,x->x[1]=Q);
+  if gens<>fail then return [gens[2],fail];fi;
+
+  gens:=List(GeneratorsOfGroup(H),x->x*One(ring));
+  if IsPrimeInt(Q) then
+    gens:=List(gens,x->ImmutableMatrix(ring,x));
+  else
+    gens:=List(gens,x->ZmodnZMat(ring,x));
+  fi;
+  
+  if ForAll(gens,IsOne) then
+    Q:=Group(()); # trivial group
+  else
+    Q:=Group(gens);
+    if ValueOption("basic")=true then
+      Size(Q);
+    elif IsPrimeInt(Size(ring)) then
+      r:=RecognizeGroup(Q); # here recognition alone will give the order as we work modulo prime
+      SetSize(Q,Size(r));
+    else
+      FittingFreeLiftSetup(Q:layerlimit:=layerlimit); # also gives order
+    fi;
+  fi;
+  lastgp:=Q;
+  Info(InfoArithSub,3,"For ",Collected(Factors(Size(ring))),":",
+    classize(ring)," ",Size(Q),":",classize(ring)/Size(Q));
+  Q:=classize(ring)/Size(Q);
+  if ForAny(delcache,x->x[1] mod Size(ring)=0 and x[2]<Q) then Error("huch");fi;
+  AddSet(delcache,[Size(ring),Q]);
+  return [Q,lastgp];
+end;
+
 # this function does surjectivity tests so that no bad primes are returned.
 PrimesNonSurjective:=function(arg)
 local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
       rad,new,irr,HM,p,cnt1,reduced,good,bad,gens,kinds,ngens,H,kind,
-      test,enhance,expbound,solvlen,ordbound,ordbound_noadj;
+      test,enhance,expbound,solvlen,ordbound,ordbound_noadj,delcache,delta;
+
+  delcache:=[];
+  delta:=function(ring)
+    return ASDoDelta(H,r->Size(SL(2,r)),delcache,ring,3)[1];
+  end;
 
   H:=arg[1];
   kind:=CheckProperKind(arg,2);
@@ -3470,7 +3510,7 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
       elif primes=fail then primes:=Set(Factors(HM));
       else primes:=Intersection(primes,Factors(HM));fi;
       if cnt>3 and Length(primes)>0 then
-	cnt:=Maximum(cnt,5*RootInt(Maximum(primes),3));
+	cnt:=Maximum(cnt,Minimum(50000,5*RootInt(Maximum(primes),3)));
       elif cnt=1 and ForAny(primes,x->x>200) then
         cnt:=2;
       fi;
@@ -3531,6 +3571,26 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
 
     fi;
 
+     # special treatment SL dim 2
+     if n=2 then
+       if not (5 in good ) then
+        a:=Product(Filtered(good,x->x>5));
+         if a>1 and delta(Integers mod a)<delta(Integers mod (5*a)) then
+           AddSet(good,5);
+         fi;
+       fi;
+       a:=Product(Filtered(good,x->x>3));
+       if a>1 and (not 2 in good)
+         and delta(Integers mod (3*a))<delta(Integers mod (6*a)) then
+         AddSet(good,2);
+       fi;
+       if a>1 and (not 3 in good)
+         and delta(Integers mod (2*a))<delta(Integers mod (6*a)) then
+         AddSet(good,3);
+       fi;
+
+     fi;
+
   fi;
 
   return good;
@@ -3542,38 +3602,10 @@ local H,primes,kind,class,i,n,m,ind,idx,ids,ring,gens,Q,first,r,good,used,
 
   delcache:=[];
   delta:=function(ring)
-  local gens,Q;
-    Q:=Size(ring);
-    gens:=First(delcache,x->x[1]=Q);
-    if gens<>fail then return gens[2];fi;
-
-    gens:=List(GeneratorsOfGroup(H),x->x*One(ring));
-    if IsPrimeInt(Q) then
-      gens:=List(gens,x->ImmutableMatrix(ring,x));
-    else
-      gens:=List(gens,x->ZmodnZMat(ring,x));
-    fi;
-    
-    if ForAll(gens,IsOne) then
-      Q:=Group(()); # trivial group
-    else
-      Q:=Group(gens);
-      if ValueOption("basic")=true then
-        Size(Q);
-      elif IsPrimeInt(Size(ring)) then
-	r:=RecognizeGroup(Q); # here recognition alone will give the order as we work modulo prime
-	SetSize(Q,Size(r));
-      else
-	FittingFreeLiftSetup(Q:layerlimit:=layerlimit); # also gives order
-      fi;
-    fi;
-    lastgp:=Q;
-    Info(InfoArithSub,3,"For ",Collected(Factors(Size(ring))),":",
-      classize(ring)," ",Size(Q),":",classize(ring)/Size(Q));
-    Q:=classize(ring)/Size(Q);
-if ForAny(delcache,x->x[1] mod Size(ring)=0 and x[2]<Q) then Error("huch");fi;
-    AddSet(delcache,[Size(ring),Q]);
-    return Q;
+  local a;
+    a:=ASDoDelta(H,classize,delcache,ring,layerlimit);
+    if a[2]<>fail then lastgp:=a[2];fi;
+    return a[1];
   end;
 
   H:=arg[1];
@@ -3694,10 +3726,10 @@ fi;
 
   fi;
 
-  # primes not caught -- this is basically 2 or 3 in small dim
+  # primes not caught -- this is basically 2, 3 or 5 in small dim
   a:=Difference(primes,good);
   if n<=3 then AddSet(a,2);fi;
-  if n<=2 then AddSet(a,3);fi;
+  if n<=2 then AddSet(a,3);AddSet(a,5);fi;
   a:=Difference(a,H!.IrrprimeInfo.bad);
   for i in a do
     Info(InfoArithSub,1,"Try extra ",i);
