@@ -1,6 +1,6 @@
 # Functionality for arithmetic groups, based on papers by AD,DF,AH
-ARITHVERSION:="1.12";
-# August 2021
+ARITHVERSION:="1.13";
+# October 2021
 
 DeclareInfoClass("InfoArithSub");
 SetInfoLevel(InfoArithSub,1);
@@ -2620,7 +2620,7 @@ PrimesForOrder:=IndividualPrimeTestFunction(NumberForElementOrder);
 
 #H,t, third argument is 1:SL, 2:SP
 PrimesForDense:=function(arg)
-local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new;
+local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new,bad;
 
   H:=arg[1];
   dim:=Length(One(H));
@@ -2631,6 +2631,7 @@ local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new;
   irr:=DetermineIrrelevantPrime(H,kind,2);
   if irr=fail then return fail;fi;
   test:=irr.test;
+  bad:=irr.bad;
   good:=ShallowCopy(irr.good);
   irr:=irr.irr;
 
@@ -2717,8 +2718,10 @@ local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new;
     b:=Union(b,Factors(NumberByTraceInverse(Group(tco))));
   fi;
 
+  b:=Set(List(b,AbsInt));
   b:=Difference(b,[irr]);
   b:=Difference(b,good);
+  b:=Difference(b,bad);
   b:=Difference(b,[1]);
 
   Info(InfoArithSub,1,"candidates=",b);
