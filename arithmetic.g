@@ -2221,7 +2221,7 @@ local test,irr,ind,good,bad,HM,f,dim;
       test:=function(modulus)
         local a;
           a:=Integers mod modulus;
-          a:=List(GeneratorsOfGroup(H),x->ZmodnZMat(a,x));
+          a:=List(GeneratorsOfGroup(H),x->Matrix(a,x));
           a:=Group(a);
           if ForAny(GeneratorsOfGroup(a),x->not IsOne(x)) then
             FittingFreeLiftSetup(a);
@@ -3382,7 +3382,7 @@ local gens,Q,r,lastgp;
   if IsPrimeInt(Q) then
     gens:=List(gens,x->ImmutableMatrix(ring,x));
   else
-    gens:=List(gens,x->ZmodnZMat(ring,x));
+    gens:=List(gens,x->Matrix(ring,x));
   fi;
   
   if ForAll(gens,IsOne) then
@@ -3496,6 +3496,11 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
     while i<=cnt do
 #Print("call ",i," ",cnt,"\n");
       HM:=fct(0);
+      if n=2 then
+        for cc in [1..10] do
+          HM:=Gcd(HM,fct(0));
+        od;
+      fi;
       if primes<>fail then
         HM:=Gcd(HM,Product(primes));
       else
