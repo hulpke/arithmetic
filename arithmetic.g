@@ -1,6 +1,6 @@
 # Functionality for arithmetic groups, based on papers by AD,DF,AH
-ARITHVERSION:="1.12";
-# August 2021
+ARITHVERSION:="1.13";
+# October 2021
 
 DeclareInfoClass("InfoArithSub");
 SetInfoLevel(InfoArithSub,1);
@@ -2227,6 +2227,7 @@ local test,irr,ind,good,bad,denom,HM,f,dim;
         local a;
           a:=Integers mod modulus;
           a:=List(GeneratorsOfGroup(H),x->ZmodnZMat(a,x*One(a)));
+          a:=List(GeneratorsOfGroup(H),x->Matrix(a,x*One(a)));
           a:=Group(a);
           if ForAny(GeneratorsOfGroup(a),x->not IsOne(x)) then
             FittingFreeLiftSetup(a);
@@ -2625,7 +2626,7 @@ PrimesForOrder:=IndividualPrimeTestFunction(NumberForElementOrder);
 
 #H,t, third argument is 1:SL, 2:SP
 PrimesForDense:=function(arg)
-local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new;
+local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new,bad;
 
   H:=arg[1];
   dim:=Length(One(H));
@@ -2636,6 +2637,7 @@ local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new;
   irr:=DetermineIrrelevantPrime(H,kind,2);
   if irr=fail then return fail;fi;
   test:=irr.test;
+  bad:=irr.bad;
   good:=ShallowCopy(irr.good);
   irr:=irr.irr;
 
@@ -2722,8 +2724,10 @@ local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new;
     b:=Union(b,Factors(NumberByTraceInverse(Group(tco))));
   fi;
 
+  b:=Set(List(b,AbsInt));
   b:=Difference(b,[irr]);
   b:=Difference(b,good);
+  b:=Difference(b,bad);
   b:=Difference(b,[1]);
 
   Info(InfoArithSub,1,"candidates=",b);
@@ -3384,7 +3388,7 @@ local gens,Q,r,lastgp;
   if IsPrimeInt(Q) then
     gens:=List(gens,x->ImmutableMatrix(ring,x));
   else
-    gens:=List(gens,x->ZmodnZMat(ring,x));
+    gens:=List(gens,x->Matrix(ring,x));
   fi;
   
   if ForAll(gens,IsOne) then
@@ -3500,6 +3504,11 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
     while i<=cnt do
 #Print("call ",i," ",cnt,"\n");
       HM:=fct(0);
+      if n=2 then
+        for cc in [1..10] do
+          HM:=Gcd(HM,fct(0));
+        od;
+      fi;
       if primes<>fail then
         HM:=Gcd(HM,Product(primes));
       else
