@@ -2182,7 +2182,7 @@ end;
 
 # utility fct to find irrelevant prime
 DetermineIrrelevantPrime:=function(H,kind,bound)
-local test,irr,ind,good,bad,HM,f,dim;
+local test,irr,ind,good,bad,denom,HM,f,dim;
 
   # caching
   if IsBound(H!.IrrprimeInfo) and H!.IrrprimeInfo.irr>bound and
@@ -2200,6 +2200,7 @@ local test,irr,ind,good,bad,HM,f,dim;
   if ValueOption("badprimes")<>fail then
     bad:=Union(bad,ValueOption("badprimes"));
   fi;
+  denom:=ShallowCopy(bad);
 
   # special treatment of 2,3 in small dimensions
   if dim<=4 then
@@ -2208,9 +2209,13 @@ local test,irr,ind,good,bad,HM,f,dim;
     if dim=3 or dim=4 then
       if not 2 in bad then irr:=4;fi;
     elif dim=2 then 
-      if 2 in bad then
-        irr:=9;
-      elif 3 in bad then
+      if 2 in denom then
+        if 3 in denom then 
+          irr:=1;
+        else
+          irr:=9;
+        fi;
+      elif 3 in denom then
         irr:=4;
       else
         irr:=36;
@@ -2221,7 +2226,7 @@ local test,irr,ind,good,bad,HM,f,dim;
       test:=function(modulus)
         local a;
           a:=Integers mod modulus;
-          a:=List(GeneratorsOfGroup(H),x->ZmodnZMat(a,x));
+          a:=List(GeneratorsOfGroup(H),x->ZmodnZMat(a,x*One(a)));
           a:=Group(a);
           if ForAny(GeneratorsOfGroup(a),x->not IsOne(x)) then
             FittingFreeLiftSetup(a);
@@ -2274,7 +2279,7 @@ local test,irr,ind,good,bad,HM,f,dim;
     repeat
       repeat
         irr:=NextPrimeInt(irr); 
-      until not irr in bad and not irr in good; # avoid preset/known primes
+      until not irr in denom and not irr in good; # avoid preset/known primes
 
       Info(InfoArithSub,2,"Try irr=",irr);
 
@@ -2292,7 +2297,7 @@ local test,irr,ind,good,bad,HM,f,dim;
     until not irr in good and irr>bound;
   fi;
   Info(InfoArithSub,1,"irrelevant prime ",irr);
-  irr:=rec(irr:=irr,good:=good,bad:=bad,test:=test,kind:=kind);
+  irr:=rec(irr:=irr,good:=good,bad:=bad,denom:=denom,test:=test,kind:=kind);
   H!.IrrprimeInfo:=irr;
   return irr;
 end;
@@ -3407,7 +3412,8 @@ end;
 # this function does surjectivity tests so that no bad primes are returned.
 PrimesNonSurjective:=function(arg)
 local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
-      rad,new,irr,HM,p,cnt1,reduced,good,bad,gens,kinds,ngens,H,kind,
+      rad,new,irr,HM,p,cnt1,reduced,good,bad,denom,
+      gens,kinds,ngens,H,kind,
       test,enhance,expbound,solvlen,ordbound,ordbound_noadj,delcache,delta;
 
   delcache:=[];
@@ -3426,6 +3432,7 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
   test:=irr.test;
   good:=ShallowCopy(irr.good);
   bad:=ShallowCopy(irr.bad);
+  denom:=ShallowCopy(irr.denom);
 
 
   # finite bounds for SL also will work for SP.
@@ -3573,20 +3580,25 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
 
      # special treatment SL dim 2
      if n=2 then
-       if not (5 in good ) then
+       if not (5 in good or 5 in denom ) then
         a:=Product(Filtered(good,x->x>5));
          if a>1 and delta(Integers mod a)<delta(Integers mod (5*a)) then
            AddSet(good,5);
          fi;
        fi;
        a:=Product(Filtered(good,x->x>3));
-       if a>1 and (not 2 in good)
-         and delta(Integers mod (3*a))<delta(Integers mod (6*a)) then
-         AddSet(good,2);
+       if a>1 and not (2 in good or 2 in denom) then
+        if (3 in denom and delta(Integers mod (a))<delta(Integers mod (2*a))) 
+        or (not 3 in denom and delta(Integers mod (3*a))<delta(Integers mod (6*a))) then
+          AddSet(good,2);
+        fi;
        fi;
-       if a>1 and (not 3 in good)
-         and delta(Integers mod (2*a))<delta(Integers mod (6*a)) then
-         AddSet(good,3);
+       if a>1 and not (3 in good or 3 in denom) then
+         if (2 in denom and delta(Integers mod (a))<delta(Integers mod (3*a))) 
+          or (not 2 in denom and delta(Integers mod (2*a))<delta(Integers mod
+         (6*a))) then
+          AddSet(good,3);
+        fi;
        fi;
 
      fi;
