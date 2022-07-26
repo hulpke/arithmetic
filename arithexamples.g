@@ -674,3 +674,12 @@ local gens,orb,p,a,img,i,dict,f;
   until p>Length(orb);
 end;
 
+
+# Symplectic groups (different form) that can have rational parameter
+SympleQEx:=function(t,s)
+  return Group([[1,t,1/2*t^2,t^3/6],[0,1,t,1/2*t^2],[0,0,1,t],[0,0,0,1]],
+  [[1,0,0,0],[0,1,0,0],[0,0,1,0],[s,0,0,1]]);
+end;
+
+
+
