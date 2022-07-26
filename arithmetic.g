@@ -2226,7 +2226,7 @@ local test,irr,ind,good,bad,denom,HM,f,dim;
       test:=function(modulus)
         local a;
           a:=Integers mod modulus;
-          a:=List(GeneratorsOfGroup(H),x->ZmodnZMat(a,x*One(a)));
+          #a:=List(GeneratorsOfGroup(H),x->ZmodnZMat(a,x*One(a)));
           a:=List(GeneratorsOfGroup(H),x->Matrix(a,x*One(a)));
           a:=Group(a);
           if ForAny(GeneratorsOfGroup(a),x->not IsOne(x)) then
@@ -2701,7 +2701,7 @@ local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new,bad;
   fi;
 
   b0:=b;
-  b:=Set(PartialFactorization(Determinant(b)));
+  b:=Set(PartialFactorization(AbsInt(NumeratorRat(Determinant(b)))));
   cnt:=0;
   while cnt<10 and (Maximum(b)>100  or Length(b)>3) do
     cnt:=cnt+1;
@@ -2715,7 +2715,7 @@ local good,irr,HM,b,rad,f,tco,i,b0,H,t,test,kind,dim,cnt,j,new,bad;
     else
       b:=RegModZSpan(tco,b0,Z(irr)^0);
     fi;
-    b:=Set(PartialFactorization(Determinant(b)));
+    b:=Set(PartialFactorization(AbsInt(NumeratorRat(Determinant(b)))));
   od;
   b:=Set(Factors(Product(b)));
 
