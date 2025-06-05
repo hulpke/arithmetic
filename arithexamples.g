@@ -139,7 +139,7 @@ local factor,l,form,mo,gf,c,frax,i,j,p,h;
       BaseChangeToCanonical(BilinearFormByMatrix(form*One(gf),gf)),
       BaseChangeToCanonical(BilinearFormByMatrix(f2*One(gf),gf)));
   c:=TransposedMat(c);
-  if TransposedMat(c)*f2*One(gf)*c<>form*One(gf) then 
+  if TransposedMat(c)*f2*One(gf)*c<>form*One(gf) then
     Print("bad c\n");
   fi;
   c:=List(c,x->List(x,Int));
@@ -153,13 +153,13 @@ local factor,l,form,mo,gf,c,frax,i,j,p,h;
   for i in c do
     for j in [1..2*l] do
       p:=First(frax,x->x[1]=i[j]);
-      if p=fail then 
+      if p=fail then
         return FormConjugator(f2:factor:=2*factor);
       fi;
       i[j]:=p[2];
     od;
   od;
-  if TransposedMat(c)*f2*c<>form then 
+  if TransposedMat(c)*f2*c<>form then
     Print("wrongc!\n");
     return FormConjugator(f2:factor:=2*factor);
   fi;
@@ -176,7 +176,7 @@ local c,mat,i,deg,degh;
   c:=ShiftedCoeffs(c[1],c[2]);
   deg:=Length(c)-1;
   if not IsEvenInt(deg) then Error("must be even degree");fi;
-  degh:=deg/2; 
+  degh:=deg/2;
   mat:=NullMat(deg,deg);
   mat{[2..deg]}{[1..deg-1]}:=IdentityMat(deg-1,Rationals);
   for i in [1..degh] do
@@ -196,7 +196,7 @@ local f;
   if One(mats[1])[1][1]<>1 then
     f:=DefaultFieldOfMatrix(mats[1]);
   fi;
-  return SMTX_BasisModuleHomomorphisms(
+  return SMTX.BasisModuleHomomorphisms(
     GModuleByMats(List(mats,x->TransposedMat(x)^-1),f),
     GModuleByMats(mats,f));
 end;
@@ -314,7 +314,7 @@ local a0,b0,a1,b1,a2,r,s,sp,l,c,form,f2,bas,mo,gf,i,j,h,frax,p,den,eqs,gb,
     eqs:=List(eqs,x->Value(x,[var],[val]));
     gb:=List(gb,x->Value(x,[var],[val]));
     a2:=List(a2,r->List(r,x->Value(NumeratorOfRationalFunction(x),[var],[val])/
-	    Value(DenominatorOfRationalFunction(x),[var],[val]))); 
+	    Value(DenominatorOfRationalFunction(x),[var],[val])));
     #eqs:=Filtered(List(eqs,cancel),x->not IsZero(x));
     #gb:=Filtered(List(gb,cancel),x->not IsZero(x));
     #a2:=List(a2,r->List(r,cancel));
@@ -373,7 +373,7 @@ local a0,b0,a1,b1,a2,r,s,sp,l,c,form,f2,bas,mo,gf,i,j,h,frax,p,den,eqs,gb,
     for i in ro[j]{[2..Length(ro[j])]} do
       Append(sp,NullspaceMat(b1-i*b1^0));
       Add(vals,GaloisImagePol(RepresentativeAction(gal,ro[j][1],i),vars));
-      
+
     od;
   od;
 
@@ -399,7 +399,7 @@ Error("KKK");
   eqs:=Filtered(eqs,x->not IsZero(x));
   #den:=Lcm(List(eqs,DenominatorOfRationalFunction));
   #eqs:=eqs*den;
-  ## dummy variable 
+  ## dummy variable
   #Add(eqs,den*vars[Length(b1)+1]-1);
 
   eqs:=List(eqs,cleanterm);
@@ -569,13 +569,13 @@ local sp,a,b,v,i;
     v:=Flat(v);
     if not IsZero(v) then
       if Length(sp)=0 or SolutionMat(sp,v)=fail then
-        Add(sp,v); 
+        Add(sp,v);
       fi;
     fi;
   od;
   return Length(sp);
 end;
-    
+
 
 NonAbsirrProcess:=function(dim,field,list)
 local m,i,myis;
@@ -602,7 +602,7 @@ local m,i,myis;
 
 
 
-  for i in m do 
+  for i in m do
     Print(First([1..Length(m)],x->IsIdenticalObj(i,m[x]))," / ",Length(m),"\n");
     #SetSize(i,Size(RecognizeGroup(i)));
     #FittingFreeLiftSetup(i);
@@ -682,4 +682,98 @@ SympleQEx:=function(t,s)
 end;
 
 
+FreeHumphries:=function(n,v)
+local L,a,i,j,k,x,gc,compareLarger,sqabsvalapprox,sgn,p,b,f,y,approx;
 
+  f:=Field(v);
+  # power basis
+  p:=PrimitiveElement(f);
+  b:=Basis(f,List([0..DegreeOverPrimeField(f)-1],a->p^a));
+
+  if Length(b)=1 then
+   approx:=p;
+   gc:=x->x;
+  else
+    # approx primitive element
+    L:=CoefficientsOfUnivariatePolynomial(MinimalPolynomial(Rationals,p));
+    L:=1/L[Length(L)]*L; # normed
+    if Length(L)>3 then
+      Error("deg >2");
+    fi;
+    gc:=x->GaloisCyc(x,-1);
+
+    approx:=(-L[2]+ApproximateRoot(L[2]^2-4*L[1],2,
+    # Twice as many digits as numbers have
+    2+4*Maximum(List(L,x->LogInt(AbsInt(x)+1,10)))))/2;
+  fi;
+  approx:=List([0..Length(b)-1],i->approx^i);
+
+  # since x^2 is strictly monotonous, compare the squares of the absolute
+  # values instead
+  sqabsvalapprox:=function(a)
+    a:=a*gc(a);
+    return approx*Coefficients(b,a);
+  end;
+
+  compareLarger:=function(a,b)
+    return sqabsvalapprox(a)>sqabsvalapprox(b);
+  end;
+
+  x:=X(Rationals,"x");
+  y:=X(Rationals,"y");
+  L:=[[0,x^2+1,x],[x,0,x+1],[-x+1,x^2,0]]*x^0;
+
+  while Length(L)<n do
+    k:=0;
+    sgn:=-1;
+    repeat
+      sgn:=-sgn;
+      if sgn=1 then k:=k+1;fi;
+      a:=k*L[1];
+      for i in [2..Length(L)-1] do
+        a:=a+L[i];
+      od;
+      a:=a+sgn*L[Length(L)];
+    until ForAll([1..Length(a)-1],
+      x->DegreeOfUnivariateLaurentPolynomial(a[x])
+        =DegreeOfUnivariateLaurentPolynomial(L[Length(L)][x])) and
+      DegreeOfUnivariateLaurentPolynomial(a[Length(a)])
+        =DegreeOfUnivariateLaurentPolynomial(L[Length(L)-1][Length(a)]);
+    Add(L,a);
+    a:=1;
+    for i in [1..Length(L)-2] do
+      #a:=NextPrimeInt(a);
+      #L[i][Length(L)]:=i*x-a;
+      L[i][Length(L)]:=x;
+    od;
+    L[Length(L)-1][Length(L)]:=y;
+    L[Length(L)][Length(L)]:=0*x^0;
+    a:=PolynomialCoefficientsOfPolynomial(DeterminantMat(L)-1,y);
+    L[Length(L)-1][Length(L)]:=-a[1]/a[2];
+    if not IsOne(DeterminantMat(L)) then Error("det!");fi;
+  od;
+
+  Display(L:compact);
+
+  L:=List(L,r->List(r,y->Value(y,v)));
+
+  # test
+  for i in [1..n] do
+    for j in [1..n] do
+      if j<>i and not compareLarger(L[i,j]*L[j,i],4) then
+        return fail;
+      fi;
+      for k in [1..n] do
+        if i<>j and i<>k and j<>k and not compareLarger(L[i,j]*L[j,k],6*L[i,k]) then
+          return fail;
+        fi;
+      od;
+    od;
+  od;
+
+  for i in [1..n] do L[i,i]:=1;od;
+
+  p:=List([1..n],x->IdentityMat(n,1));
+  for i in [1..n] do p[i][i]:=L[i];od;
+  return Group(p,One(p[1]));
+end;
