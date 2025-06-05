@@ -5,7 +5,7 @@ ARITHVERSION:="1.13";
 DeclareInfoClass("InfoArithSub");
 SetInfoLevel(InfoArithSub,1);
 
-# 
+#
 if LoadPackage("matgrp")=fail then
   Error(
     "The ``matgrp'' package is required, but is currently not installed, or some of its dependencies\n",
@@ -43,7 +43,7 @@ local kind,form,n;
     if kind<>1 and kind<>2 and kind<>SL and kind<>SP then
       Error("Arithmetic groups of type ",kind," are not yet supported");
     fi;
-    if kind=SL or kind=1 then 
+    if kind=SL or kind=1 then
       kind:=SL;
     elif kind=2 or kind=SP then
       kind:=SP;
@@ -99,7 +99,7 @@ local nsq,bas,basm,b,g,a,pone,basmo,v,prime;
         Add(basm,a);
 	Add(bas,Flat(a));
 	Add(basmo,Flat(a)*pone);
-	if Length(bas)=nsq then 
+	if Length(bas)=nsq then
 	  return true;
 	fi;
       fi;
@@ -125,24 +125,24 @@ local G,kind,n,w1,w2,p,gal,r,t;
     w2:=ASPseudoRandom(G);
   until Order(w2)=infinity and w1*w2<>w2*w1;
 
-  if kind=SL then 
+  if kind=SL then
     t:=TransitiveIdentification(SymmetricGroup(n));
   else
     t:=TransitiveIdentification(WreathProduct(Group((1,2)),SymmetricGroup(n/2)));
   fi;
 
   p:=CharacteristicPolynomial(w1);
-  if (not IsIrreducible(p)) or GaloisType(p)<>t then 
+  if (not IsIrreducible(p)) or GaloisType(p)<>t then
     #Print("galtype w1=",GaloisType(p),"\n");
     return false;
   fi;
 
   p:=CharacteristicPolynomial(w2);
-  if (not IsIrreducible(p)) or GaloisType(p)<>t then 
+  if (not IsIrreducible(p)) or GaloisType(p)<>t then
     #Print("galtype w2=",GaloisType(p),"\n");
     return false;
   fi;
-  
+
   # test irreducible
   if GenericAbsirr(G) then
     return true;
@@ -234,7 +234,7 @@ fp,fpgens,words,k,sol,det,odet,reducer,dens;
 
   n:=Length(gens[1]);
   matsplit:=l->List([1..n],x->l{[n*(x-1)+1..n*x]});
-  
+
   # first work modulo `oneirr' to get full rank
   fp:=FreeGroup(Length(gens));
   fpgens:=GeneratorsOfGroup(fp);
@@ -261,7 +261,7 @@ fp,fpgens,words,k,sol,det,odet,reducer,dens;
       od;
     od;
   od;
-  
+
   Info(InfoArithSub,3,"Zspan");
 
   # next, form these images over Z.
@@ -334,7 +334,7 @@ local stabilizergen,st,stabrsub,stabrsubsz,ratio,subsz,vp,stabrad,
 	  # not known -- add to generators
 	  Add(stabfacimg,fe);
 
-	  if IsRecord(st) then 
+	  if IsRecord(st) then
 	    if st.left<>fail then
 	      Error("cannot happen");
 	      st:=st.left/st.right;
@@ -401,7 +401,7 @@ local stabilizergen,st,stabrsub,stabrsubsz,ratio,subsz,vp,stabrad,
   # factor group. Both times we can check that we have the correct orbit.
 
   # ratio 1: full orbit/stab known, ratio <2 stab cannot grow any more.
-  ratio:=5; 
+  ratio:=5;
   vp:=1; # position in orbit to process
 
   # solvable iteration
@@ -462,7 +462,7 @@ local stabilizergen,st,stabrsub,stabrsubsz,ratio,subsz,vp,stabrad,
   stage:=2;
 
   # ratio 1: full orbit/stab known, ratio <2 stab cannot grow any more.
-  ratio:=5; 
+  ratio:=5;
   vp:=1;
   while vp<=Length(orb) do
     for genum in [1..Length(gens)] do
@@ -538,7 +538,7 @@ end;
 # based on library DoNFIM
 #
 
-# on generators  [ [ 1, 1 ], [ 0, 1 ] ], [ [ 1, 0 ], [ 1, 1 ] ] 
+# on generators  [ [ 1, 1 ], [ 0, 1 ] ], [ [ 1, 0 ], [ 1, 1 ] ]
 SL2WORD:=function(gens,mat)
 local w,q;
   #if not IsMatrix(gens[1]) then
@@ -855,7 +855,7 @@ local phom,left,right,one,norm2dist,red,norm,n,i,slhom,a,b,factorrad;
   red:=NormDriver(hom,phom,elm,norm);
   left:=red.left*left;right:=right*red.right;elm:=red.mat;
 
-  if norm(elm)<>0 then 
+  if norm(elm)<>0 then
     Info(InfoWarning,1,"not perfect cleanout");
     red:=HNFWord(hom,elm);
   else
@@ -986,7 +986,7 @@ local phom,left,right,one,norm2dist,red,norm,n,i,slhom,a,b,factorrad;
   od;
 
   if norm(elm)<>0 then Error("not perfect cleanout");fi;
- 
+
   if not IsBound(hom!.halfslhom) then
     slhom:=SLNZFP(n/2:factorrad:=2*factorrad);
     hom!.halfslhom:=slhom;
@@ -1009,7 +1009,7 @@ local phom,left,right,one,norm2dist,red,norm,n,i,slhom,a,b,factorrad;
   #map onto sp generators:
   a:=MappingGeneratorsImages(slhom)[2];
   b:=[];
-  for i in [1..Length(a)] do 
+  for i in [1..Length(a)] do
     b[i]:=PositionProperty(MappingGeneratorsImages(phom)[2],x->x{[1..n/2]}{[1..n/2]}=a[i]);
   od;
   if fail in b then Error("generator map");fi;
@@ -1176,7 +1176,7 @@ local g,symb,mats,yind,uind,zind,i,m,free,rels,j,k,r,s,t,genprod,addrel,p,
   SetIsBijective(inv,true);
   SetInverseGeneralMapping(hom,inv);
   SetInverseGeneralMapping(inv,hom);
-  
+
   mats:=[];
   # calcuate words for other generators
   # first the $t_{i,j}$:
@@ -1345,7 +1345,7 @@ ASMatrixHeight:=function(m)
 local a,i,j;
   a:=1;
   for i in m do
-    for j in i do 
+    for j in i do
       if j>a then
 	a:=j;
       elif -j>a then
@@ -2131,10 +2131,10 @@ local G,x,y,a,b;
 	       [[0,0,1],[1,0,-k],[0,1,-1-k]]);
   x:=G.1;
   y:=G.2;
-  if k=0 then 
+  if k=0 then
     a:=x^2*y^-3*x*y*x^-1;b:=x^-1*y*x*y^-3*x^2;
     G!.unipotent:=a*b;
-  elif k=2 then 
+  elif k=2 then
     a:=x^3*(y*x)^3*y;
     b:=y^-1*x^-1*y*x*y^-1*x*y*x^-1*y^-1;
     G!.unipotent:=a*b/a/b;
@@ -2208,9 +2208,9 @@ local test,irr,ind,good,bad,denom,HM,f,dim;
     irr:=1;
     if dim=3 or dim=4 then
       if not 2 in bad then irr:=4;fi;
-    elif dim=2 then 
+    elif dim=2 then
       if 2 in denom then
-        if 3 in denom then 
+        if 3 in denom then
           irr:=1;
         else
           irr:=9;
@@ -2279,12 +2279,12 @@ local test,irr,ind,good,bad,denom,HM,f,dim;
     irr:=1;
     repeat
       repeat
-        irr:=NextPrimeInt(irr); 
+        irr:=NextPrimeInt(irr);
       until not irr in denom and not irr in good; # avoid preset/known primes
 
       Info(InfoArithSub,2,"Try irr=",irr);
 
-      if irr=10007 then # first prime >10000. 
+      if irr=10007 then # first prime >10000.
         if ValueOption("mayfail")=true then return fail;fi;
         # maybe its not dense
         if not IsDenseIR2(H) then
@@ -2341,7 +2341,7 @@ end;
 NumberForElementOrder:=function(g,ord)
 local n,mats,pr,prim,m,p,i,d,pow,j,k,gcd;
   n:=DimensionOfMatrixGroup(g);
-  repeat 
+  repeat
     m:=ASPseudoRandom(g);
   until Order(m)=infinity;
 
@@ -2746,7 +2746,7 @@ end;
 
 ConstructAdjointRep:=function(G,kind)
 local n,unflat,bas,i,j,m,V,act,form,mats,d;
-   
+
   kind:=CheckProperKind([G,kind],2);
 
   unflat:=m->List([1..n],x->m{[1+n*(x-1)..n*x]});
@@ -2939,7 +2939,7 @@ ZSpinnedBasis:=function(v,matrices,ngens,irr)
         nans:=Concatenation(ans,[w]);
         nans:=Filtered(HermiteNormalFormIntegerMat(nans),x->not IsZero(x));
         if nans<>ans then
-          if ans[1]<>nans[1] then 
+          if ans[1]<>nans[1] then
             newi:=1;
           else
             newi:=Minimum(newi,Maximum(Filtered([1..Length(ans)],x->ans[x]=nans[x]))+1);
@@ -3284,7 +3284,7 @@ else
                         rows:=Difference(rows,[i]);
                       fi;
                     od;
-                      
+
                     cols:=List(TriangulizedMat(mat{rows}),PositionNonZero);
                     i:=AbsInt(DeterminantMat(mat{rows}{cols}));
                     #i:=Set(Factors(AbsInt(DeterminantMat(mat{rows}{cols}))));
@@ -3309,7 +3309,7 @@ Info(InfoArithSub,1,"fac=",fac);
 
                   # assure factors are prime and
                   # assume they are all small or we've tried a few
-                  if ForAll(fac,IsPrimeInt) and 
+                  if ForAll(fac,IsPrimeInt) and
                     (ForAll(fac,x->x<65536) or cnt>100) then
                     for i in Difference(Filtered(fac,x->x<65536),okprime) do
                       if RankMat(mat*Z(i)^0)=rk then RemoveSet(fac,i);else Add(okprime,i);fi;
@@ -3390,7 +3390,7 @@ local gens,Q,r,lastgp;
   else
     gens:=List(gens,x->Matrix(ring,x));
   fi;
-  
+
   if ForAll(gens,IsOne) then
     Q:=Group(()); # trivial group
   else
@@ -3532,7 +3532,7 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
       fi;
       i:=i+1;
     od;
- 
+
     found:=ShallowCopy(primes);
 
     primes:=Difference(primes,bad); # known bad ones
@@ -3597,13 +3597,13 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
        fi;
        a:=Product(Filtered(good,x->x>3));
        if a>1 and not (2 in good or 2 in denom) then
-        if (3 in denom and delta(Integers mod (a))<delta(Integers mod (2*a))) 
+        if (3 in denom and delta(Integers mod (a))<delta(Integers mod (2*a)))
         or (not 3 in denom and delta(Integers mod (3*a))<delta(Integers mod (6*a))) then
           AddSet(good,2);
         fi;
        fi;
        if a>1 and not (3 in good or 3 in denom) then
-         if (2 in denom and delta(Integers mod (a))<delta(Integers mod (3*a))) 
+         if (2 in denom and delta(Integers mod (a))<delta(Integers mod (3*a)))
           or (not 2 in denom and delta(Integers mod (2*a))<delta(Integers mod
          (6*a))) then
           AddSet(good,3);
@@ -3632,7 +3632,7 @@ local H,primes,kind,class,i,n,m,ind,idx,ids,ring,gens,Q,first,r,good,used,
   H:=arg[1];
   kind:=CheckProperKind(arg,3);
   if not IsBound(arg[2]) or arg[2]=fail then
- 
+
     primes:=PrimesNonSurjective(H);
   else
     primes:=arg[2];
@@ -3644,7 +3644,7 @@ local H,primes,kind,class,i,n,m,ind,idx,ids,ring,gens,Q,first,r,good,used,
   needsq:=[2];
 
   n:=Length(One(H));
-  if n=2 then 
+  if n=2 then
     Info(InfoWarning,1,"Warning:\n    ",
     "The congruence subgroup property does not hold in dimension 2");
     Add(needsq,3); # in dim 2 also 3 is a special case
@@ -3689,7 +3689,7 @@ if idx>ind and ValueOption("level")<>fail and not ValueOption("level") mod
 (i^a)=0 then
   Error("nodiv!");
 fi;
-    until idx=ind and (a>1 or not i in needsq); # for p=2 (3 in dim 2) 
+    until idx=ind and (a>1 or not i in needsq); # for p=2 (3 in dim 2)
                                                 # also test a=2
     if idx>1 then
       # prime is of interest
@@ -3771,7 +3771,7 @@ fi;
         m:=m*i;
       fi;
     fi;
-    
+
   od;
 
 
@@ -3797,7 +3797,7 @@ local gen, d, f,mo;
   f:=FieldOfMatrixGroup( grp );
   d:=DimensionOfMatrixGroup( grp );
   gen:=GeneratorsOfGroup( grp );
-  if not ForAll(gen, x-> DeterminantMat(x) = One(f)) then 
+  if not ForAll(gen, x-> DeterminantMat(x) = One(f)) then
     #Error("erra");
     return false;fi;
   # size known -- easy
@@ -3805,14 +3805,14 @@ local gen, d, f,mo;
 
   # natural module
   mo:=GModuleByMats(gen,f);
-  if not MTX.IsAbsolutelyIrreducible(mo) then 
+  if not MTX.IsAbsolutelyIrreducible(mo) then
     #Error("errb");
     return false; fi;
 
   # 2-symmetric
   if Characteristic(f)>2 then
     mo:=GModuleByMats(List(gen,x->SymmetricPower(x,2)),f);
-    if not MTX.IsAbsolutelyIrreducible(mo) then 
+    if not MTX.IsAbsolutelyIrreducible(mo) then
     #Error("errc");
       return false; fi;
   fi;
@@ -3820,7 +3820,7 @@ local gen, d, f,mo;
   # 2-antisymmetric
   if Characteristic(f)>2 then
     mo:=GModuleByMats(List(gen,x->ExteriorPower(x,2)),f);
-    if not MTX.IsAbsolutelyIrreducible(mo) then 
+    if not MTX.IsAbsolutelyIrreducible(mo) then
     #Error("errd");
       return false; fi;
   fi;
@@ -3828,7 +3828,7 @@ local gen, d, f,mo;
   # 3-symmetric
   if Characteristic(f)>3 then
     mo:=GModuleByMats(List(gen,x->SymmetricPower(x,3)),f);
-    if not MTX.IsAbsolutelyIrreducible(mo) then 
+    if not MTX.IsAbsolutelyIrreducible(mo) then
     #Error("erre");
       return false; fi;
   fi;
@@ -3839,10 +3839,10 @@ local gen, d, f,mo;
     return true;
   fi;
 
-  # force proper size w/o recog issues 
+  # force proper size w/o recog issues
   return Size(grp:cheap) = Size(SL(d, Size(f)));
 
-end );  
+end );
 
 InstallOtherMethod( CopySubMatrix, "for two matrices made from plists and four lists",
   [ IsPlistRep and IsMatrix, IsPlistRep and IsMatrix and IsMutable,
@@ -3886,7 +3886,7 @@ end);
 
 InstallMethod( Randomize, "for a mutable 8bit vector",
   [ Is8BitVectorRep and IsMutable ],
-  function( v ) 
+  function( v )
     local f,i;
     f:=GF(Q_VEC8BIT(v));
     for i in [1..Length(v)] do v[i]:=Random(f); od;
@@ -3896,8 +3896,8 @@ InstallMethod( Randomize, "for a mutable 8bit vector",
 InstallMethod( MutableCopyMat, "for an 8bit matrix",
   [ Is8BitMatrixRep ],
   function( m )
-    local mm; 
-    mm:=List(m,ShallowCopy); 
+    local mm;
+    mm:=List(m,ShallowCopy);
     ConvertToMatrixRep(mm,Q_VEC8BIT(m[1]));
     return mm;
   end );
@@ -3916,7 +3916,7 @@ InstallMethod( Matrix, "for a list of vecs, an integer, and an 8bit mat",
         for i in [1..QuoInt(Length(l),rl)] do
             li[i]:=l{[(i-1)*rl+1..i*rl]};
         od;
-    else  
+    else
         li:= ShallowCopy(l);
     fi;
     q:=Q_VEC8BIT(m[1]);
@@ -3931,7 +3931,7 @@ InstallMethod( FindBasePointCandidates,
   "for a matrix group over a FF, using birthday paradox method",
   [ IsGroup and IsMatrixGroup and IsFinite, IsRecord, IsInt, IsObject ], 21,
   function( grp, opt, mode, parentS )
-    local F, q, d, randels, immorblimit, orblimit, data, op, v, l, c, e, ht, 
+    local F, q, d, randels, immorblimit, orblimit, data, op, v, l, c, e, ht,
           val, x, w, cand, minest, minpos, round, i, j, gens;
     F:=DefaultFieldOfMatrixGroup(grp);
     q:=Size(F);
@@ -4007,7 +4007,7 @@ InstallMethod( FindBasePointCandidates,
                            (c[j] >= 15 and e[j] <= orblimit) then
                              Info( InfoGenSS, 2, "Found orbit with estimated ",
                                    "length ",e[j]," (coinc=",c[j],")" );
-                             cand:=rec(points:=[v[j]], ops:=[op], 
+                             cand:=rec(points:=[v[j]], ops:=[op],
                                          used:=0);
                              for i in [1..l] do
                                  if i <> j and c[i] >= 10 and
@@ -4017,7 +4017,7 @@ InstallMethod( FindBasePointCandidates,
                                  fi;
                              od;
                              if Length(cand.points) > 1 then
-                                 Info( InfoGenSS, 2, "Adding ", 
+                                 Info( InfoGenSS, 2, "Adding ",
                                        Length(cand.points)-1, " more vectors",
                                        " to candidates.");
                              fi;
