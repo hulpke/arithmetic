@@ -4493,12 +4493,22 @@ local gens,Q,r,lastgp;
   return [Q,lastgp];
 end;
 
+ShortProduct:=function(g,len)
+local a,i;
+  a:=One(g);
+  for i in [1..len] do
+    a:=a*Random(GeneratorsOfGroup(g))^Random([-1,1]);
+  od;
+  return a;
+end;
+
 # this function does surjectivity tests so that no bad primes are returned.
 PrimesNonSurjective:=function(arg)
 local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
       rad,new,irr,HM,p,cnt1,reduced,good,bad,denom,
       gens,kinds,ngens,H,kind,modfun,redinfo,
-      test,enhance,expbound,solvlen,ordbound,ordbound_noadj,delcache,delta;
+      test,enhance,expbound,solvlen,ordbound,ordbound_noadj,delcache,delta,
+      count,hh,reduzier,modimg;
 
   delcache:=[];
   delta:=function(ring)
@@ -4695,8 +4705,27 @@ if i=2 then Error("huh1");fi;
     fi;
 
     if redinfo.case<>1 then # extension, test subfields
+      # Construct a derived subgroup, that modulo good primes still surjects
+      # on SL.
+
+      reduzier:=List([irr.irr],x->redinfo.makereductionfunc(x));
+      count:=4;
+      repeat
+        repeat 
+          count:=count+1;
+          hh:=List([1..4*count],x->ShortProduct(H,Int(count/2)));
+          hh:=List([1..count],x->Comm(Random(hh),Random(hh)));
+          hh:=Filtered(hh,x->not IsOne(x));
+        until Length(hh)>0;
+        modimg:=
+        List(reduzier,x->Group(List(hh,m->List(m,r->List(r,y->x(y))))));
+      until ForAll(modimg,x->IsNaturalSL(x));
+      hh:=Group(hh);
+      DetermineIrrelevantPrime(hh,kind,2);
+
       # careful: String "Subfield" is tested for.
-      enhance("Subfield",1,x->DiscriminantTraceRing(H));
+      # test the commutator group, not H
+      enhance("Subfield",1,x->DiscriminantTraceRing(hh));
 
     fi;
 
