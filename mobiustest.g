@@ -54,6 +54,10 @@ elementarygens:=function(a)
    return [[[1,a],[0,1]],[[1,0],[a,1]]];
 end;
 
+elementarygens2:=function(a)
+   return [[[1,0],[1,1]],[[1,a],[0,1]]];
+end;
+
 TryWordEnum:=function(hom,mats)
 local prdprime,prime,onp,op,gens,o,l,prd,start,ende,j,k,a,i,m,one,
       istransvec,dict,new,dups,ap,mgi,let,prw,mf,result,mi;
@@ -457,7 +461,13 @@ end;
 SUBG:=fail;
 MobiusTest:=function(arg)
 local map,val,mfact,mats,gp,primes,m,r,w,t,den,p,e,num,mg,wmg,i,j,a,b,x,
-  max,int,iso,red,ran,trace,nf,dopres,eval,dokerword;
+  max,int,iso,red,ran,trace,nf,dopres,eval,dokerword,zwei,pstart;
+  if arg[1]="Zwei" then
+    zwei:=true;
+    arg:=arg{[2..Length(arg)]};
+  else
+    zwei:=false;
+  fi;
   if Length(arg)=1 then
     val:=arg[1];
     map:=AmalgamSL2k(DenominatorRat(val));
@@ -477,11 +487,17 @@ local map,val,mfact,mats,gp,primes,m,r,w,t,den,p,e,num,mg,wmg,i,j,a,b,x,
     fi;
   fi;
 
+  pstart:=Maximum(Concatenation([30],Factors(DenominatorRat(val))))+1;
+
   dopres:=ValueOption("dopres")=true;
   dokerword:=ValueOption("dokerword")=true;
 
 
-  mats:=elementarygens(val);
+  if zwei then
+    mats:=elementarygens2(val);
+  else
+    mats:=elementarygens(val);
+  fi;
   gp:=Group(mats);
   primes:=PrimesNonSurjective(gp);
   m:=MaxPCSPrimes(gp,primes);
@@ -500,7 +516,11 @@ local map,val,mfact,mats,gp,primes,m,r,w,t,den,p,e,num,mg,wmg,i,j,a,b,x,
   else
     e:=LogInt(den,p);
     num:=CoefficientsQadic(NumeratorRat(val),p);
-    mg:=List([0..e],x->elementarygens(1/p^x));
+    if zwei then
+      mg:=List([0..e],x->elementarygens2(1/p^x));
+    else
+      mg:=List([0..e],x->elementarygens(1/p^x));
+    fi;
     mg:=Concatenation(List(mg,x->x[1]),List(mg,x->x[2]));
   fi;
 
@@ -527,9 +547,9 @@ local map,val,mfact,mats,gp,primes,m,r,w,t,den,p,e,num,mg,wmg,i,j,a,b,x,
 
   w:=[];
   if ForAny([1..Length(mg)],x->not IsBound(wmg[x])) then
-    wmg:=WordsForMatsTry(map,mg);
+    wmg:=WordsForMatsTry(map,mg:start:=pstart);
   fi;
-  if p>1 then
+if false and p>1 then
     e:=e+1;
     for i in [1,2] do
       t:=One(Source(map));
@@ -544,7 +564,7 @@ local map,val,mfact,mats,gp,primes,m,r,w,t,den,p,e,num,mg,wmg,i,j,a,b,x,
     Print("found words ",w," easily!\n");
   else
     Print("Hard factor!\n");
-    w:=WordsForMatsTry(map,mats);
+    w:=WordsForMatsTry(map,mats:start:=pstart);
   fi;
   SUBG:=SubgroupNC(Source(map),w);
   r.sub:=ShallowCopy(w);
@@ -638,7 +658,7 @@ local map,val,mfact,mats,gp,primes,m,r,w,t,den,p,e,num,mg,wmg,i,j,a,b,x,
       if dokerword then
         # make word in generators
         m:=mats[2]^[[-1,1],[0,-1]];
-        wmg:=WordsForMatsTry(map,[m]);
+        wmg:=WordsForMatsTry(map,[m]:start:=pstart);
         wmg:=wmg[1]^NumeratorRat(val);
 
         #wmg:=w[1]^5*w[2]^5*w[1]^-5*w[2]*w[1]^10;
@@ -1454,6 +1474,19 @@ local g,epi,gens,o,a,b,e,z,t;
         z:=PositionProperty(o,y->TransposedMat(y^-1*e)=y^-1*e and y<>e);
         if z<>fail then Error("EEE");fi;
       fi;
+    od;
+  od;
+end;
+
+Handle2:=function(p,exp)
+local e,num,n,hom;
+  hom:=AmalgamSL2k(p);
+  PMAPS:=[];
+  for e in exp do
+    num:=Filtered([1..4*p^e],x->Gcd(x,p)=1);
+    for n in num do
+      Print("Doing: ",n/p^e,"\n");
+      MobiusTest("Zwei",hom,n/p^e);
     od;
   od;
 end;
