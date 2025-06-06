@@ -2524,7 +2524,7 @@ local rad,a,b,t,cnt,p;
     b:=ASPseudoRandom(g:radius:=Int(rad));
     a:=Comm(a,b);
     t:=TraceMat(a)-TraceMat(a^-1);
-#Print("NTI:",t,"\n");
+#Print("NTI:",a," ",t,"\n");
     rad:=rad+1/10;
     if not IsZero(t) then
       cnt:=cnt+1;
@@ -2542,7 +2542,7 @@ local rad,a,b,t,cnt,p;
   repeat
     a:=ASPseudoRandom(g:radius:=Int(rad));
     t:=TraceMat(a)-TraceMat(a^-1);
-#Print("NTI:",t,"\n");
+#Print("NTI:",a," ",t,"\n");
     rad:=rad+1/10;
     if not IsZero(t) then
       cnt:=cnt+1;
