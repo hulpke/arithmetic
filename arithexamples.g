@@ -682,31 +682,53 @@ SympleQEx:=function(t,s)
 end;
 
 
+LongReidIMRN:=function()
+  return Group([[0,-1,-4+3*ER(3),-1+2*ER(3)],
+  [1,0,-2+ER(3),-1],
+  [0,0,1,0],
+  [0,0,0,1]],
+  [[0,0,-1+ER(3),0],
+  [0,0,0,-1+ER(3)],
+  [(1+ER(3))/2,0,0,0],
+  [0,(1+ER(3))/2,0,0]]);
+end;
+
+LongReidIMRNV:=function(v)
+  return Group([[1,0,0,0],[0,1,0,0],[0,0,ER(v^2-4)/ER(v^2+8),1],
+   [0,0,-2*(v^2+2)/(v^2+8),-ER(v^2-4)/ER(v^2+8)]],
+   [[(v+ER(v^2+8))/4,0,(4-v^2-v*ER(v^2+8))/8,0],
+   [0,(v-ER(v^2+8))/4,0,(-4+v^2-v*ER(v^2+8))/8],
+   [1,0,(-v-ER(v^2+8))/4,0],
+   [0,-1,0,(-v+ER(v^2+8))/4]]);
+end;
+
 FreeHumphries:=function(n,v)
 local L,a,i,j,k,x,gc,compareLarger,sqabsvalapprox,sgn,p,b,f,y,approx;
 
-  f:=Field(v);
-  # power basis
-  p:=PrimitiveElement(f);
-  b:=Basis(f,List([0..DegreeOverPrimeField(f)-1],a->p^a));
+  if IsCyc(v) then
+    f:=Field(v);
+    # power basis
+    p:=PrimitiveElement(f);
+    b:=Basis(f,List([0..DegreeOverPrimeField(f)-1],a->p^a));
 
-  if Length(b)=1 then
-   approx:=p;
-   gc:=x->x;
-  else
-    # approx primitive element
-    L:=CoefficientsOfUnivariatePolynomial(MinimalPolynomial(Rationals,p));
-    L:=1/L[Length(L)]*L; # normed
-    if Length(L)>3 then
-      Error("deg >2");
+    if Length(b)=1 then
+    approx:=p;
+    gc:=x->x;
+    else
+      # approx primitive element
+      L:=CoefficientsOfUnivariatePolynomial(MinimalPolynomial(Rationals,p));
+      L:=1/L[Length(L)]*L; # normed
+      if Length(L)>3 then
+        Error("deg >2");
+      fi;
+      gc:=x->GaloisCyc(x,-1);
+
+      approx:=(-L[2]+ApproximateRoot(L[2]^2-4*L[1],2,
+      # Twice as many digits as numbers have
+      2+4*Maximum(List(L,x->LogInt(AbsInt(x)+1,10)))))/2;
     fi;
-    gc:=x->GaloisCyc(x,-1);
-
-    approx:=(-L[2]+ApproximateRoot(L[2]^2-4*L[1],2,
-    # Twice as many digits as numbers have
-    2+4*Maximum(List(L,x->LogInt(AbsInt(x)+1,10)))))/2;
+    approx:=List([0..Length(b)-1],i->approx^i);
   fi;
-  approx:=List([0..Length(b)-1],i->approx^i);
 
   # since x^2 is strictly monotonous, compare the squares of the absolute
   # values instead
@@ -718,6 +740,10 @@ local L,a,i,j,k,x,gc,compareLarger,sqabsvalapprox,sgn,p,b,f,y,approx;
   compareLarger:=function(a,b)
     return sqabsvalapprox(a)>sqabsvalapprox(b);
   end;
+
+  if not IsCyc(v) then
+    compareLarger:=function(a,b) return true;end;
+  fi;
 
   x:=X(Rationals,"x");
   y:=X(Rationals,"y");
@@ -775,5 +801,6 @@ local L,a,i,j,k,x,gc,compareLarger,sqabsvalapprox,sgn,p,b,f,y,approx;
 
   p:=List([1..n],x->IdentityMat(n,1));
   for i in [1..n] do p[i][i]:=L[i];od;
+  if not IsCyc(v) then return p;fi;
   return Group(p,One(p[1]));
 end;
