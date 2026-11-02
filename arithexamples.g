@@ -804,3 +804,7 @@ local L,a,i,j,k,x,gc,compareLarger,sqabsvalapprox,sgn,p,b,f,y,approx;
   if not IsCyc(v) then return p;fi;
   return Group(p,One(p[1]));
 end;
+
+G1To8:=[LongReidIMRN(),LongReidThistle(ER(3)),LongReidThistle(ER(-3)),
+  LongReidThistle(5+ER(7)),LongReidThistle(8+ER(-7)),
+  LongThistle(ER(3)),LongThistle((1+ER(-3))/2),LongThistle(ER(5))];
