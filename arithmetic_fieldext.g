@@ -71,6 +71,25 @@ end;
 Char0ScalarDomainMatrixList:=function(L)
 local den,i,I,F,c;
   L:=Set(Filtered(Flat(L),x->not IsInt(x)));
+
+  # catch algebraic extension
+  if Length(L)>0 and ForAll(L,IsAlgebraicElement) then
+    F:=FamilyObj(L[1]);
+    if ForAll(L,x->F=FamilyObj(x)) then
+      F:=F!.wholeField;
+      # force integral basis
+      I:=NumthRoundTwo(F);
+      I:=List(I,x->x*BasisVectors(CanonicalBasis(F)));
+      I:=Basis(F,I);
+      SetIntegralBasisNumberField(F,I);
+      den:=List(Unique(Flat(L)),x->Coefficients(I,x));
+      den:=Set(List(Flat(den),DenominatorRat));
+      return [F,Lcm(den)];
+    else
+      Error("multiple fields");
+    fi;
+  fi;
+
   den:=1;
   for i in Filtered(L,IsRat) do
     den:=Lcm(den,DenominatorRat(i));
@@ -836,7 +855,6 @@ local i,a,b,c,p,q,s,bas,l,split,quot,ni,adda,lno,intred,intered,denfactor,pivot;
             Add(lno,AbsInt(Norm(red.field,i[PositionNonZero(i)])));
           fi;
         else
-Error("TRY CASE");
 #          Print("p:",LogInt(AbsInt(Norm(i[p])),10)," ",
 #            LogInt(AbsInt(Norm(b[q][p])),10),"\n");
 
@@ -938,682 +956,7 @@ local a,b,na,nb,q,c,r,nr,car,i,os,s,ot,t,print,prev;
 
 end;
 
-PrepareReductionInfo:=function(ring)
-local d,den,c,makeredfun,a,basimg;
-  if IsList(ring) then
-    den:=ring[2];
-    ring:=ring[1];
-  else
-    den:=1;
-  fi;
-  d:=rec(moduli:=[],pinfo:=[],primeinfo:=[],liftfuns:=[]); # data record, carrying the info
-
-  d.primesinprime:=function(p)
-  local a;
-    a:=First(d.primeinfo,x->x[1]=p);
-    if a<>fail then return a[2];fi;
-    a:=d.doprimedeco(p);
-    Add(d.primeinfo,[p,a]);
-    return a;
-  end;
-
-  d.primesinnumber:=function(a)
-    a:=Set(Factors(AbsInt(a)));
-    if a=[1] then return a;fi;
-    return Concatenation(List(a,d.primesinprime));
-  end;
-
-  if ring=Integers or ring=Rationals then
-
-    d.case:=1;
-    d.discriminant:=1;
-    d.bas:=[1];
-    d.normval:=AbsInt;
-    d.doprimedeco:=p->rec(p:=p,deg:=1,fieldsize:=p,
-      ideal:=Concatenation("(",String(p),")"),
-      ramify:=0,redfun:=x->x*Z(p)^0);
-
-  elif IsAbelianNumberField(ring) then
-    d.case:=3;
-
-    # quadratic field. Find out which root
-    c:=Conductor(ring);
-    if DegreeOverPrimeField(ring)=2 then
-      if ForAll(GeneratorsOfField(ring),x->GaloisCyc(x,-1)=x) then
-        # real, root of positive
-        if c mod 4=0 then c:=c/4; fi;
-      else
-        # complex, root of negative
-        if c mod 4=0 then c:=c/4; fi;
-        c:=-c;
-      fi;
-      # now the field is sqrt(c)
-      if c mod 4=1 then
-        d.bas:=Basis(ring,[1,(1+ER(c))/2]);
-      else
-        d.bas:=Basis(ring,[1,ER(c)]);
-      fi;
-      d.minpol:=MinimalPolynomial(Rationals,d.bas[2]);
-      basimg:=a->[a^0,a];
-      d.discriminant:=Discriminant(d.minpol);
-      d.omega:=(d.discriminant+ER(d.discriminant))/2;
-    elif ring=NF(7,[ 1, 6 ]) then
-      # Q(E(7)+E(7)^-1)
-      a:=E(7)+E(7)^-1;
-      d.bas:=Basis(ring,[1,a,a^2]);
-      basimg:=a->[a^0,a,a^2];
-      d.omega:=a;
-      d.minpol:=MinimalPolynomial(Rationals,d.bas[2]);
-
-    else
-      Error("field not yet done");
-    fi;
-
-    d.denominatorfun:=function(a)
-      return Lcm(List(Coefficients(d.bas,a),DenominatorRat));
-    end;
-
-    d.discriminant:=Discriminant(d.minpol);
-    d.field:=Field(d.omega);
-
-    d.normval:=x->AbsInt(Norm(Field(x),x));
-    makeredfun:=a->function(elm)
-                    return Coefficients(d.bas,elm)*a; # linear comb
-                  end;
-
-    d.doprimedeco:=function(p)
-    local pol,l,i,m,a,r,it,ig,im,elm,co;
-
-      if p=1 then return [p];fi;
-      pol:=PolynomialModP(d.minpol,p);
-      l:=[];
-      for i in Collected(Factors(pol)) do
-        m:=i[1];
-        a:=RootsOfUPol(GF(p^DegreeOfLaurentPolynomial(m)),m)[1];
-        a:=basimg(a); # basis images, given that minpol is for bas[2]
-        if i[2]=1 then r:=0; else r:=i[2];fi;
-        r:=rec(p:=p,deg:=DegreeOfLaurentPolynomial(m),ramify:=r,
-          fieldsize:=p^DegreeOfLaurentPolynomial(m),
-          basimg:=a,
-          redfun:=makeredfun(a)); # wrapped to keep the right `a`.
-
-        # find ideal generators
-        it:=Iterator(ring);
-        NextIterator(it); # zero
-        ig:=[p];
-        im:=ZIdealBasis(d.bas,d.bas,ig);
-        im:=im.mat;
-        if AbsInt(DeterminantMat(im))<>r.fieldsize then
-
-          # form nullspace of map
-          co:=Basis(GF(r.fieldsize));
-          ig:=List(d.bas,x->List(Coefficients(co,r.redfun(x)),Int));
-          im:=NullspaceMat(ig);
-          im:=List(im,x->x*Lcm(List(x,DenominatorRat))); # integral
-          ig:=List(im,x->x*d.bas);
-          im:=ZIdealBasis(d.bas,d.bas,ig);
-          im:=im.mat;
-          if AbsInt(DeterminantMat(im))<>r.fieldsize then
-            Add(ig,p);
-            im:=ZIdealBasis(d.bas,d.bas,ig);
-            im:=im.mat;
-          fi;
-
-          while AbsInt(DeterminantMat(im))<>r.fieldsize do
-            repeat
-              elm:=NextIterator(it);
-              co:=Coefficients(d.bas,elm);
-              if co[1]<0 then
-                elm:=-elm;
-                co:=-co;
-              fi;
-            until AllIntcoeffs(co) and IsZero(r.redfun(elm));
-            if Length(im)=0 or not AllIntcoeffs(SolutionMat(im,co)) then
-              Add(ig,elm);
-              im:=ZIdealBasis(d.bas,d.bas,ig);
-              im:=im.mat;
-            fi;
-          od;
-        fi;
-
-        if Length(ig)>1 and Length(d.bas)=2 then
-          co:=QuadSingleIdealGen(ig,d);
-          if co<>fail then
-            im:=ZIdealBasis(d.bas,d.bas,[co]);
-            im:=im.mat;
-            if AbsInt(DeterminantMat(im))=r.fieldsize then
-              ig:=[co];
-            else
-              Error("quadgen");
-            fi;
-          fi;
-
-        fi;
-
-        r.idealgens:=ig;
-        co:="( ";
-        for elm in ig do
-          if elm<>ig[1] then
-            Append(co,", ");
-          fi;
-          im:=Quadratic(elm);
-          if im<>fail then
-            im:=im.display;
-          else
-            im:=String(elm);
-          fi;
-          Append(co,im);
-        od;
-        Append(co," )");
-        r.ideal:=co;
-        Add(l,r);
-      od;
-      return l;
-    end;
-
-
-    d.redfuns:=[];
-    d.makereductionfunc:=function(number)
-    local pos,one,pol,x,root;
-      pos:=Position(d.moduli,number);
-      if pos=fail then
-        Add(d.moduli,number);
-        pos:=Length(d.moduli);
-
-        # build reduction info
-        if IsInt(number) and IsPrimeInt(number) then
-          pol:=PolynomialModP(d.minpol,number);
-          if not IsIrreducible(pol) then Error("not prime!");fi;
-          root:=RootsOfUPol(GF(number^2),pol)[1];
-          d.pinfo[pos]:=[root,d.bas,[One(GF(number)),root],number^2];
-          d.redfuns[pos]:=function(a)
-            return Coefficients(d.bas,a)*d.pinfo[pos][3];
-          end;
-        elif IsCyclotomic(number) and d.factorsinnumbers([number])=[number] then
-          x:=AbsInt(Norm(Field(number),number));
-          root:=Coefficients(d.bas,number);
-          root:=-root[1]/root[2] mod x;
-          root:=root*One(GF(x));
-          d.pinfo[pos]:=[root,d.bas,[One(GF(x)),root],x];
-          d.redfuns[pos]:=function(a)
-            return Coefficients(d.bas,a)*d.pinfo[pos][3];
-          end;
-        else
-          d.redfuns[pos]:=makeredfun(number.basimg);
-         
-#          d.redfuns[pos]:=IdealQuotientNumorder(d.bas,[number]);
-#          d.pinfo[pos]:=[fail,fail,fail,Size(Range(d.redfuns[pos]))];
-        fi;
-      fi;
-
-      return d.redfuns[pos];
-    end;
-
-    d.factorsinnumbers:=function(a)
-    local p,f,i;
-      p:=d.primesinnumber(Norm(a)); # all primes occurring
-      f:=[];
-      for i in p do
-        if Length(i.idealgens)>1 then Error("Divide!"); fi;
-        i:=i.idealgens[1];
-        while ForAll(Coefficients(d.bas,a/i),IsInt) do
-          Add(f,i);
-          a:=a/i;
-        od;
-      od;
-      return f;
-    end;
-
-    # BAD, does not work
-    d.gcdexfun:=function(a,b)
-      return NormGcdex(d,a,b);
-    end;
-
-  else
-    Error("not yet done");
-  fi;
-
-  return d;
-
-
-
-
-
-
-
-
-  Error("old code");
-
-#  if ring=Integers or ring=Rationals then
-#    d.case:=1; # integers
-#    d.discriminant:=1;
-#    d.makereductionfunc:=function(prime)
-#    local one,pos;
-#      pos:=Position(d.moduli,prime);
-#      if pos=fail then Add(d.moduli,prime); pos:=Length(d.moduli); fi;
-#      if not IsBound(d.redfuns[pos]) then
-#        one:=One(Integers mod prime);
-#        d.redfuns[pos]:=a->a*one;
-#      fi;
-#      return d.redfuns[pos];
-#    end;
-#
-#    d.convertparam:=prime->prime;
-#
-#    d.bas:=[1];
-#
-#    d.makeliftfunc:=function(prime)
-#      return Int;
-#    end;
-#    d.denominatorfun:=DenominatorRat;
-#    d.factorsinnumbers:=function(nums)
-#      if not IsList(nums) then nums:=[nums];fi;
-#      if Length(nums)=0 then return [];fi;
-#      nums:=AbsInt(Lcm(nums));
-#      nums:=Set(Factors(nums));
-#      nums:=Difference(nums,[1]);
-#      return nums;
-#    end;
-#    d.partialFactorization:=x->PartialFactorization(x,6);
-#
-#    d.primalityTest:=IsPrimeInt;
-#
-#    d.commonPrimesPlus:=Gcd;
-
-#  elif ring=GaussianIntegers or ring=GaussianRationals then
-#    d.bas:=Basis(CF(4),[1,E(4)]);
-#    d.case:=2;
-#    d.discriminant:=2;
-#
-#    d.makereductionfunc:=function(prime)
-#    local pos,one,pol,x,root;
-#      pos:=Position(d.moduli,prime);
-#      if pos=fail then
-#        Add(d.moduli,prime);
-#        pos:=Length(d.moduli);
-#        # build reduction info
-#        if IsInt(prime) then
-#          if prime<0 then prime:=-prime;fi;
-#          x:=X(GF(prime),1);
-#          pol:=x^2+1;
-#          if not IsIrreducible(pol) then Error("not prime!");fi;
-#          root:=RootsOfUPol(GF(prime^2),pol)[1];
-#          d.pinfo[pos]:=[root,d.bas,[One(GF(prime)),root],prime^2];
-#          d.redfuns[pos]:=function(a)
-#            return Coefficients(d.bas,a)*d.pinfo[pos][3];
-#          end;
-#        elif IsCyclotomic(prime) then
-#          x:=AbsInt(Norm(prime));
-#          root:=Coefficients(d.bas,prime);
-#          root:=-root[1]/root[2] mod x;
-#          root:=root*One(GF(x));
-#          d.pinfo[pos]:=[root,d.bas,[One(GF(x)),root],x];
-#          d.redfuns[pos]:=function(a)
-#            return Coefficients(d.bas,a)*d.pinfo[pos][3];
-#          end;
-#        else
-#          Error("different ideal");
-#        fi;
-#      fi;
-#
-#      return d.redfuns[pos];
-#    end;
-#
-#    d.convertparam:=function(prime)
-#      d.makereductionfunc(prime); # set up
-#      return d.pinfo[Position(d.moduli,prime)][4];
-#    end;
-#    d.denominatorfun:=function(a)
-#      return Lcm(List(Coefficients(d.bas,a),DenominatorRat));
-#    end;
-#
-#    d.factorsinnumbers:=function(num)
-#    local a,an,b,c,n,i;
-#      if not IsList(num) then num:=[num];fi;
-#      if Length(num)=0 then return [];fi;
-#      a:=Set(Concatenation(List(num,x->Factors(GaussianIntegers,x))));
-#
-#      # find associated ones. Use norm to avoid many pairs
-#
-#      # Norm 1 is unit
-#      an:=List(a,Norm);
-#      b:=[];
-#      for n in Difference(an,[1]) do
-#        c:=[];
-#        for i in a{Filtered([1..Length(an)],x->an[x]=n)} do # ones of right norm
-#          if not ForAny(c,x->i/x in GaussianIntegers) then
-#            Add(b,i);
-#            Add(c,i);
-#          fi;
-#        od;
-#      od;
-#      #Print("Factor ",num," -> ",b,"\n");
-#      return b;
-#    end;
-#
-#    d.partialFactorization:=function(a)
-#      #Print("Not partial but full factor\n");
-#      return d.factorsinnumbers(a);
-#    end;
-#
-#    d.primalityTest:=x->1= Length(Factors(GaussianIntegers,x));
-#
-#    d.commonPrimesPlus:=function(arg)
-#    local f,a,i,b,l;
-##Print("commonPrimes :",a," ",b,"\n");
-#      if Length(arg)=1 then l:=arg[1]; else l:=arg;fi;
-#      a:=l[1];
-#      i:=1;
-#      while i<Length(l) do
-#        i:=i+1;
-#        b:=l[i];
-#        if IsInt(a) and IsInt(b) then
-#          a:=Gcd(a,b);
-#        elif a=0 then a:=b;
-#        elif b<>0 then
-#          f:=d.factorsinnumbers([Gcd(Norm(a),Norm(b))]);
-#          f:=Filtered(f,x->not IsZero(x));
-#          f:=Filtered(f,x->a/x in GaussianIntegers and b/x in GaussianIntegers);
-#          a:=Product(f,1);
-#        fi;
-#      od;
-#      return a;
-#    end;
-#
-#  elif IsAbelianNumberField(ring) and DegreeOverPrimeField(ring)=2 then
-
-    d.case:=3;
-    # quadratic field. Find out which root
-    c:=Conductor(ring);
-    if ForAll(GeneratorsOfField(ring),x->GaloisCyc(x,-1)=x) then
-      # real, root of positive
-      if c mod 4=0 then c:=c/4; fi;
-    else
-      # complex, root of negative
-      if c mod 4=0 then c:=c/4; fi;
-      c:=-c;
-    fi;
-    # now the field is sqrt(c)
-    if c mod 4=1 then
-      d.bas:=Basis(ring,[1,(1+ER(c))/2]);
-      d.eucl:=2;
-    else
-      d.bas:=Basis(ring,[1,ER(c)]);
-      d.eucl:=1;
-    fi;
-    d.fundunit:=FundUnitQuadratic(c);
-
-    # Norm-euclidean
-    # https://encyclopediaofmath.org/wiki/Euclidean_field#:~:text=The%20norm%2DEuclidean%20quadratic%20fields,57%2C%20or%2073%2C%20cf.
-    if not c in
-      [-1,-2,2,-3,3,5,6,-7,7,-11,11,13,17,19,21,29,33,37,41,57,73] then
-      d.eucl:=0;
-    fi;
-    d.minpol:=MinimalPolynomial(Rationals,d.bas[2]);
-    d.discriminant:=Discriminant(d.minpol);
-    d.omega:=(d.discriminant+ER(d.discriminant))/2;
-    d.field:=Field(d.omega);
-    d.primefacs:=[];
-
-
-    d.factorprime:=function(p)
-    local pos,id,f,b;
-      pos:=PositionSorted(d.primefacs,[p,-infinity]);
-      if pos<=Length(d.primefacs) and d.primefacs[pos][1]=p then
-        return d.primefacs[pos][2];
-      fi;
-      # Prop. 5.1.4 in Cohen
-      if d.discriminant mod p=0 then
-        if p=2 and d.discriminant mod 16=12 then
-          id:=[p,1+d.omega];
-        else
-          id:=[p,d.omega];
-        fi;
-        id:=QuadSingleIdealGen(id,d);
-        f:=[id,id];
-      elif Jacobi(d.discriminant,p)=-1 then
-        f:=[p];
-      else # Legendre=1
-        f:=d.discriminant mod (4*p);
-        #b:=First([1..4*p],x->x^2 mod (4*p)=f);
-        id:=Cartesian(List(RootsOfUPol(X(GF(p))^2-(f mod p)),Int),
-              Filtered([0..4],x->x^2 mod 4=(f mod 4)));
-        id:=List(id,x->ChineseRem([p,4],x));
-        b:=First(id,x->x^2 mod (4*p)=f);
-        if b=fail then Error("bfail");fi;
-
-        id:=[p,d.omega-(d.discriminant+b)/2];
-        id:=QuadSingleIdealGen(id,d);
-        f:=[id];
-        id:=[p,d.omega-(d.discriminant-b)/2];
-        id:=QuadSingleIdealGen(id,d);
-        Add(f,id);
-      fi;
-      AddSet(d.primefacs,[p,f]);
-      return f;
-    end;
-
-
-
-    d.makereductionfunc:=function(number)
-    local pos,one,pol,x,root;
-      pos:=Position(d.moduli,number);
-      if pos=fail then
-        Add(d.moduli,number);
-        pos:=Length(d.moduli);
-        # build reduction info
-        if IsInt(number) and IsPrimeInt(number) then
-          pol:=PolynomialModP(d.minpol,number);
-          if not IsIrreducible(pol) then Error("not prime!");fi;
-          root:=RootsOfUPol(GF(number^2),pol)[1];
-          d.pinfo[pos]:=[root,d.bas,[One(GF(number)),root],number^2];
-          d.redfuns[pos]:=function(a)
-            return Coefficients(d.bas,a)*d.pinfo[pos][3];
-          end;
-        elif IsCyclotomic(number) and d.factorsinnumbers([number])=[number] then
-          x:=AbsInt(Norm(Field(number),number));
-          root:=Coefficients(d.bas,number);
-          root:=-root[1]/root[2] mod x;
-          root:=root*One(GF(x));
-          d.pinfo[pos]:=[root,d.bas,[One(GF(x)),root],x];
-          d.redfuns[pos]:=function(a)
-            return Coefficients(d.bas,a)*d.pinfo[pos][3];
-          end;
-        else
-          d.redfuns[pos]:=IdealQuotientNumorder(d.bas,[number]);
-          d.pinfo[pos]:=[fail,fail,fail,Size(Range(d.redfuns[pos]))];
-        fi;
-      fi;
-
-      return d.redfuns[pos];
-    end;
-
-
-
-
-    d.convertparam:=function(number)
-      d.makereductionfunc(number); # set up
-      return d.pinfo[Position(d.moduli,number)][4];
-    end;
-    d.denominatorfun:=function(a)
-      return Lcm(List(Coefficients(d.bas,a),DenominatorRat));
-    end;
-
-    d.factorsinnumbers:=function(num)
-    local a,an,b,c,n,i,j,try,oi;
-      if not IsList(num) then num:=[num];fi;
-      if Length(num)=0 then return [];fi;
-
-      a:=[];
-      for i in Filtered(num,x->Norm(x)<>1) do
-        # factor over Z and then split primes and check which ones do
-        c:=i;
-        if not IsRat(c) then
-          c:=Norm(d.field,c);
-          try:=true;
-        else
-          try:=false;
-        fi;
-        c:=List(Factors(c),AbsInt); # Z-primes
-        if try then
-          c:=Union(List(Set(c),d.factorprime));
-          b:=[];
-          oi:=i;
-          for j in c do
-            while AllIntcoeffs(Coefficients(d.bas,i/j)) do
-              i:=i/j;
-              Add(b,j);
-            od;
-          od;
-#Print(i," factors ",b,"\nproduct:",Product(b),", QN:",
-#  Norm(d.field,oi/Product(b)),"\n");
-          Append(a,b);
-        else
-          c:=Concatenation(List(c,d.factorprime));
-#Print(i," factors ",c,"\nproduct:",Product(c),", QN:",
-#  Norm(d.field,i/Product(c)),"\n");
-          Append(a,c);
-        fi;
-      od;
-      Sort(a);
-      if Length(a)=1 and Length(num)=1
-        and ForAll(Coefficients(d.bas,a[1]/num[1]),IsInt) then
-        return num;
-      fi;
-
-      if ForAll(a,IsCyclotomic) then
-        # find associated ones. Use norm to avoid many pairs
-
-        # Norm 1 is unit
-        an:=List(a,x->Norm(d.field,x));
-        b:=[];
-        for n in Difference(an,[1]) do
-          c:=[];
-          for i in a{Filtered([1..Length(an)],x->an[x]=n)} do # ones of right norm
-            if not ForAny(List(c,x->i/x),x->AllIntcoeffs(Coefficients(d.bas,x))) then
-              Add(b,i);
-              Add(c,i);
-            fi;
-          od;
-        od;
-        #Print("Factor ",num," -> ",b,"\n");
-      else
-        b:=a;
-      fi;
-      return b;
-    end;
-
-    d.partialFactorization:=function(a)
-      #Print("Not partial but full factor\n");
-      return d.factorsinnumbers(a);
-    end;
-
-    d.primalityTest:=function(num)
-      local f;
-      f:=d.factorsinnumbers(num);
-      if Length(f)>1 then return false;fi;
-      return Norm(d.field,num/f[1])=1;
-    end;
-
-    d.commonPrimesPlus:=function(arg)
-    local f,a,i,b,l,e,j,common,k;
-      if Length(arg)=1 then l:=arg[1]; else l:=arg;fi;
-      e:=List(l,x->Norm(Field(x),x));
-      l:=Concatenation([Gcd(e)],l);
-
-      if d.eucl>0 then
-        repeat
-#Print(List(l{[1]},x->AbsInt(Norm(Field(x),x))));
-          SortBy(l,x->AbsInt(Norm(Field(x),x)));
-          a:=l[1];
-          b:=[a];
-          for i in [2..Length(l)] do
-            e:=NormEuclideanAlgorithm(d,a,l[i]);
-            if e=fail then Add(b,l[i]);
-            else a:=e;fi;
-          od;
-          b[1]:=a;
-          if Length(l)=Length(b) then
-            # Euclidean failed
-            e:=AbsInt(Norm(Field(a),a));
-            if e=1 then return 1;fi; # unit
-#Print("failed:",e,"\n");
-
-            i:=PartialFactorization(e);
-            if ForAll(i,IsPrimeInt) then
-              l:=l{[2..Length(l)]};
-              a:=d.factorsinnumbers(a);
-              a:=Filtered(a,x->ForAll(l,y->ForAll(Coefficients(d.bas,y/x),IsInt)));
-              a:=Product(a);
-#Print("done:",Norm(Field(a),a),"\n");
-              return a;
-            else
-              b:=Filtered(i,IsPrimeInt);
-              if Length(b)=0 then
-                Error("TURTU");
-              fi;
-              common:=1;
-              for i in b do
-                for j in d.factorsinnumbers(i) do
-                  if ForAll(l,x->ForAll(Coefficients(d.bas,x/j),IsInt)) then
-                    common:=common*j;
-                    l:=List(l,x->x/j);
-                  fi;
-                  for k in [1..Length(l)] do
-                    while ForAll(Coefficients(d.bas,l[k]/j),IsInt) do
-                      l[k]:=l[k]/j;
-                    od;
-                  od;
-                od;
-              od;
-              if l[1]=a then
-                Error("immernoch");
-              else
-                Error();
-                a:=common*d.commonPrimesPlus(l);
-                Print("rone:",Norm(Field(a),a),"\n");
-                return a;
-              fi;
-            fi;
-          fi;
-          l:=b;
-        until Length(l)=1;
-        return a;
-      fi;
-
-      return QuadSingleIdealGen(l,d);
-
-
-#      m:=Filtered(l,x->not IsInt(x));
-#      if Length(m)>0 then
-#        f:=Field(m[1]);
-#        m:=List(m,x->Norm(f,x));
-#        m:=Gcd(m);
-#      else
-#        m:=1;
-#      fi;
-#
-#      f:=Gcd(Concatenation([m],Filtered(l,IsInt)));
-#      f:=d.factorsinnumbers([f]);
-#
-#      a:=[];
-#      for i in f do
-#        if ForAll(l,x->AllIntcoeffs(Coefficients(d.bas,x/i))) then
-#          Add(a,i);
-#        fi;
-#      od;
-#      return a;
-    end;
-
-#  else
-#    Error("cannot yet do");
-#  fi;
-#  return d;
-
-
-end;
-
-
+Read("numthfuns.g");
 
 # Part 1: Density testing
 
@@ -1641,7 +984,7 @@ local kind,form,n;
       fi;
     fi;
 
-    if kind<>1 and kind<>2 and kind<>SL and kind<>SP then
+    if kind<>1 and kind<>2 and kind<>SL and kind<>SP and kind<>SU then
       Error("Arithmetic groups of type ",kind," are not yet supported");
     fi;
     if kind=SL or kind=1 then
@@ -3841,15 +3184,10 @@ local red,modfun,maz,f;
   return Group(maz);
 end;
 
-IsSmallerCongruenceImage:=function(g,prime)
-local a;
-  a:=CongruenceImageOfGroup(g,prime);
-  return Size(a)<Size(SL(2,FieldOfMatrixGroup(a)));
-end;
-
 # utility fct to find irrelevant prime
 DetermineIrrelevantPrime:=function(H,kind,bound)
-local test,irr,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,modfun,p;
+local test,irr,ira,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,
+      modfun,p,epi,iter,maxer;
 
   # caching
   if IsBound(H!.IrrprimeInfo) and H!.IrrprimeInfo.irr.p>bound and
@@ -3865,6 +3203,19 @@ local test,irr,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,modfun,p;
   ring:=Char0ScalarDomainMatrixList(GeneratorsOfGroup(H));
   bad:=ring[2];
   redinfo:=PrepareReductionInfo(ring);
+  if redinfo.degree=1 or IsPrimeInt(redinfo.degree) then
+    maxer:=redinfo.degree;
+  else
+    # max degree possible from Galois
+    a:=GaloisType(redinfo.minpol);
+    a:=TransitiveGroup(redinfo.degree,a);
+    a:=List(ConjugacyClasses(a),Representative);;
+    a:=List(a,CycleStructurePerm);
+    maxer:=Maximum(Flat(a));
+  fi;
+
+
+
   denom:=[];
   if bad=1 then
     bad:=[];
@@ -3929,6 +3280,8 @@ local test,irr,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,modfun,p;
               return Size(SL(dim,Integers mod modulus))/Size(a);
             elif kind=SP then
               return Size(SP(dim,Integers mod modulus))/Size(a);
+            elif kind=SU then
+              Error("MODULUS");
             else Error("kind");fi;
           end;
 
@@ -3958,7 +3311,7 @@ local test,irr,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,modfun,p;
       return IsNaturalSL(G) and
       Size(DefaultFieldOfMatrixGroup(G))=number.fieldsize;
     end;
-  else
+  elif kind=SP then
     test:=function(G,number)
     local q,r;
       r:=RecognizeGroup(G);
@@ -3966,6 +3319,22 @@ local test,irr,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,modfun,p;
       return Size(r)=Size(SP(Length(One(G)),q)) and
           Size(DefaultFieldOfMatrixGroup(G))=number.fieldsize;
     end;
+  elif kind=SU then
+    test:=function(G,number)
+    local q,r;
+      r:=RecognizeGroup(G);
+      q:=DefaultFieldOfMatrixGroup(G);
+      if not IsSquareInt(number.fieldsize) then
+        # field is not square -- must be SL
+        return Size(r)=Size(SL(Length(One(G)),q)) and
+            Size(DefaultFieldOfMatrixGroup(G))=number.fieldsize;
+      else
+        return Size(r)=Size(SU(Length(One(G)),RootInt(number.fieldsize,2))) and
+            Size(DefaultFieldOfMatrixGroup(G))=number.fieldsize;
+      fi;
+    end;
+  else
+    Error("differntkind");
   fi;
 
   # discriminant and dimension
@@ -3975,7 +3344,9 @@ local test,irr,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,modfun,p;
         modfun:=irr.redfun;
         HM:=List(GeneratorsOfGroup(H),m->List(m,r->List(r,modfun)));
         HM:=Group(HM);
-        if not test(HM,irr) then Add(good,irr);
+        if not test(HM,irr) then 
+          #if irr.ramify<>0 then Error("GGG"); fi;
+          Add(good,irr);
         else Add(bad,irr);fi;
       fi;
     od;
@@ -3995,15 +3366,16 @@ local test,irr,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,modfun,p;
     repeat
       repeat
         a:=NextPrimeInt(a);
-        irr:=redinfo.primesinprime(a);
+        ira:=redinfo.primesinprime(a);
         # avoid preset/known primes
-        irr:=Filtered(irr,x->not x in denom);
-        irr:=Filtered(irr,x->not x in good);
+        ira:=Filtered(ira,x->not x in denom);
+        ira:=Filtered(ira,x->not x in good);
+        ira:=Filtered(ira,x->x.ramify=0);
 
-      until Length(irr)>0 and not a in denom;
-      irr:=irr[1]; # pick first
+      until Length(ira)>0 and not a in denom;
+      ira:=ira[1]; # pick first
 
-      f:=irr;
+      f:=ira;
       if IsRecord(f) and IsBound(f.ideal) then f:=f.ideal;fi;
       Info(InfoArithSub,2,"Try irr=",f);
 
@@ -4015,16 +3387,53 @@ local test,irr,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,modfun,p;
         fi;
       fi;
 
-      modfun:=irr.redfun;
+      modfun:=ira.redfun;
       HM:=List(GeneratorsOfGroup(H),m->List(m,r->List(r,modfun)));
       HM:=Group(HM);
-      if not test(HM,irr) then Add(good,irr);fi;
-    until not irr in good and a>bound;
-  fi;
-  Info(InfoArithSub,1,"irrelevant prime ",irr.ideal);
+      if not test(HM,ira) then Add(good,ira);fi;
+    until not ira in good and a>bound;
 
-  irr:=rec(irr:=irr,good:=good,bad:=bad,denom:=denom,test:=test,kind:=kind,
+  else
+    ira:=irr;
+  fi;
+  Info(InfoArithSub,1,"irrelevant prime ",ira.ideal);
+  irr:=rec(irr:=ira,good:=good,bad:=bad,denom:=denom,test:=test,kind:=kind,
     red:=redinfo);
+
+  if ValueOption("noform")<>true then
+    # also find irrelevant prime that gives max degree extension
+    # Does not always work but OK for abelian Galois
+    if LogInt(ira.fieldsize,PrimeBase(ira.fieldsize)) <Length(redinfo.bas) then
+
+      # go on
+      repeat
+        repeat
+          a:=NextPrimeInt(a);
+          ira:=redinfo.primesinprime(a);
+          # avoid preset/known primes
+          ira:=Filtered(ira,x->not x in denom);
+          ira:=Filtered(ira,x->not x in good);
+          ira:=Filtered(ira,x->DegreeOverPrimeField(x.residuefield)>1);
+          #ira:=Filtered(ira,x->DegreeOverPrimeField(x.residuefield)=maxer);
+
+        until Length(ira)>0 and not a in denom;
+        ira:=ira[1]; 
+
+        f:=ira;
+        if IsRecord(f) and IsBound(f.ideal) then f:=f.ideal;fi;
+        Info(InfoArithSub,2,"Try also irr=",f);
+
+        modfun:=ira.redfun;
+        HM:=List(GeneratorsOfGroup(H),m->List(m,r->List(r,modfun)));
+        HM:=Group(HM);
+        if not test(HM,ira) then Add(good,ira);fi;
+
+      until not ira in good;
+      
+    fi;
+    Info(InfoArithSub,1,"Full extension prime ",ira.ideal);
+    irr.extensionprime:=ira;
+  fi;
 
   H!.IrrprimeInfo:=irr;
   # do this only over Z
@@ -4058,6 +3467,20 @@ local test,irr,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,modfun,p;
     if f<>1 then
       Print("\nWARNING: Traces only generate ring of index ",f,"\n\n");
       irr.traceringgens:=ind.mgens;
+    else
+      # just as info -- find element with irrational trace
+      epi:=EpimorphismFromFreeGroup(H:names:=
+        List([1..Length(GeneratorsOfGroup(H))],x->[CHARS_LALPHA[x]]));
+      iter:=Iterator(Source(epi));
+      repeat
+        f:=NextIterator(iter);
+      until not IsRat(TraceMat(ImagesRepresentative(epi,f)));
+
+      b:=f;
+      if redinfo.degree=2 then
+        b:=Quadratic(TraceMat(Image(epi,f))).display;
+      fi;
+      Print("Element ",f," has trace ",b,"\n");
     fi;
   fi;
 
@@ -4107,7 +3530,7 @@ local n,mats,pr,prim,m,p,i,d,pow,j,k,gcd,red;
   red:=g!.IrrprimeInfo.red;
   repeat
     m:=ASPseudoRandom(g);
-  until Order(m)=infinity;
+  until IsAlgebraicExtension(DefaultFieldOfMatrix(m)) or Order(m)=infinity;
 
   prim:=1;
   pow:=m;
@@ -4197,7 +3620,8 @@ local rad,a,b,c,red;
     b:=ASPseudoRandom(g:radius:=Int(rad));
     c:=Comm(a^k,b^k);
     rad:=rad+1/10;
-  until not IsOne(c) and Order(a)=infinity;
+  until not IsOne(c) 
+    and (IsAlgebraicExtension(DefaultFieldOfMatrix(a)) or Order(a)=infinity);
   return GcdTrivialModuloImage(c,
     DetermineIrrelevantPrime(g,0,2).red
     );
@@ -4302,8 +3726,7 @@ local rad,a,b,t,cnt,p,red,cou;
       fi;
       t:=TraceMat(a)-ImagesRepresentative(au,TraceMat(a^-1));
       cou:=cou+1;
-    until not IsZero(t) or cou>100;
-
+    until not IsZero(t) or cou>10+2*4^Int(rad);
 
     rad:=rad+1/10;
     if not IsZero(t) then
@@ -4355,15 +3778,17 @@ local HM,gens,b,d,irri,modfun,denomfun,pl;
   gens:=Filtered(pl,x->x in irri.good);
   pl:=Filtered(pl,x->not x in irri.good);
 
-  for b in pl do
-#Print("TRY:",b.p,"^",LogInt(b.fieldsize,b.p),"\n");
-    if not MTX.IsAbsolutelyIrreducible(
-      GModuleByMats(List(GeneratorsOfGroup(H),m->List(m,
-        r->List(r,modfun))),GF(irri.irr.fieldsize))) then
-      Add(gens,b);
-    fi;
-  od;
-  # go back to Z-primes
+  if pl<>[1] then
+    for b in pl do
+  #Print("TRY:",b.p,"^",LogInt(b.fieldsize,b.p),"\n");
+      if not MTX.IsAbsolutelyIrreducible(
+        GModuleByMats(List(GeneratorsOfGroup(H),m->List(m,
+          r->List(r,b.redfun))),GF(b.fieldsize))) then
+        Add(gens,b);
+      fi;
+    od;
+    # go back to Z-primes
+  fi;
   d:=Product(Set(List(gens,x->x.p)),1);
 
   return d;
@@ -4425,10 +3850,102 @@ end;
 #
 #end;
 
+
+# Replacement for the trace-span step of DiscriminantTraceRing.
+# (built by Claude)
+#
+# Computes the Z-span T of { tr(g) : g in G } inside O by building the
+# enveloping *Z*-algebra Z[G] in integer coordinates (never O-scaling rows),
+# then returns the index [O:T].
+#
+#   G   : matrix group over O (entries algebraic integers in K)
+#   bas : integral basis of O as a GAP basis of K (e.g. red.bas)
+#
+# Returns the index [O:T] (a positive integer). Primes dividing it are
+# exactly the candidates for subfield images.  If T has rank < [K:Q] the
+# traces lie in a proper subfield, so infinitely many primes are
+# non-surjective; this is reported as an error.
+ZTraceLatticeIndex:=function(G,bas,factor)
+local gens,n,d,bv,zc,act,A,L,new,sol,changed,v,a,T,trpos;
+
+  gens:=GeneratorsOfGroup(G);
+  gens:=Concatenation(gens,List(gens,Inverse));
+  n:=Length(gens[1]);
+  bv:=BasisVectors(bas)*factor;
+  d:=Length(bv);
+
+  # Z-coordinates of an n x n matrix over O: vector of length n^2*d
+  zc:=m->Concatenation(List(Concatenation(m),x->Coefficients(bas,x)));
+
+  # integer matrix of right multiplication X -> X*g on Z-coordinates
+  act:=function(g)
+  local rows,e,i,j,k;
+    rows:=[];
+    for i in [1..n] do
+      for j in [1..n] do
+        for k in [1..d] do
+          e:=List([1..n],x->List([1..n],y->0));
+          e[i][j]:=bv[k];
+          Add(rows,zc(e*g));
+        od;
+      od;
+    od;
+    return rows;
+  end;
+
+  A:=List(gens,act);
+  if not ForAll(Flat(A),IsInt) then
+    Error("entries not integral w.r.t. bas");
+  fi;
+
+  # Z[G] = Z-span of all words = closure of Z*1 under right mult by gens^{+-1}
+  L:=[zc(One(gens[1]))];
+  repeat
+    changed:=false;
+    for v in ShallowCopy(L) do
+      for a in A do
+        new:=v*a;
+        sol:=SolutionMat(L,new);
+        if sol=fail or not ForAll(sol,IsInt) then
+          L:=Filtered(HermiteNormalFormIntegerMat(Concatenation(L,[new])),
+                      x->not IsZero(x));
+          changed:=true;
+        fi;
+      od;
+    od;
+  until not changed;
+  Info(InfoArithSub,2,"Z[G] has Z-rank ",Length(L)," of ",n^2*d);
+
+  # trace is Z-linear: sum the d coordinates of each diagonal entry
+  trpos:=List([1..n],i->((i-1)*n+i-1)*d);
+  T:=List(L,v->List([1..d],k->Sum(trpos,p->v[p+k])));
+  T:=Filtered(HermiteNormalFormIntegerMat(T),x->not IsZero(x));
+
+  if Length(T)<d then
+    Error("traces span rank ",Length(T)," < ",d,
+          ": group is defined over a proper subfield");
+  fi;
+  return AbsInt(DeterminantMat(T));
+end;
+
 DiscriminantTraceRing:=function(G)
 local red,bas,module,span,addmat,i,j,k,a,z,y;
   red:=G!.IrrprimeInfo.red;
   bas:=red.bas;
+  
+  # fixed version -- 
+  # compute the trace span from ℤ[G] instead of O[G]. The fix is to never
+  #  let a row be scaled by an element of O. The subfield argument only
+  #  needs T = ℤ-span{tr(g) : g ∈ G}: if P lies over p and p ∤ [O:T], 
+  #  then T + pO = O. So the traces reduce onto all of O/P, and the
+  #  image can’t sit inside a subfield. That makes T the right lattice,
+  #  and ℤ[G] is the natural way to get it, since tr is ℤ-linear.
+  if G!.IrrprimeInfo.denom<>[] then
+    a:=Product(G!.IrrprimeInfo.denom);
+  else
+    a:=1;
+  fi;
+  return ZTraceLatticeIndex(G,bas,a);
 
   span:=[Concatenation(One(G))];
   span:=RegModZSpan(GeneratorsOfGroup(G),span,G!.IrrprimeInfo.irr.redfun,red);
@@ -4442,7 +3959,7 @@ local red,bas,module,span,addmat,i,j,k,a,z,y;
 
   module:=HermiteNormalFormIntegerMat(module);
   module:=Filtered(module,x->not IsZero(x));
-  return MyDiscriminantOfLattice(module)*Product(k);;
+  return MyDiscriminantOfLattice(module)*Product(k);
 end;
 
 ## prime>3 must be so G is SL mod prime
@@ -5295,7 +4812,7 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
       rad,new,irr,HM,p,cnt1,reduced,good,bad,denom,
       gens,kinds,ngens,H,kind,modfun,redinfo,tco,
       test,enhance,expbound,solvlen,ordbound,ordbound_noadj,delcache,delta,
-      count,hh,reduzier,modimg,transv,det,deto,forcea;
+      count,hh,reduzier,modimg,transv,det,deto,forcea,overall;
 
   delcache:=[];
   delta:=function(ring)
@@ -5315,7 +4832,6 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
   bad:=Set(ShallowCopy(irr.bad));
   denom:=ShallowCopy(irr.denom);
   redinfo:=irr.red;
-
 
   # Bounds for classes C6 and C9
   # finite bounds for SL also will work for SP.
@@ -5374,12 +4890,16 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
 
   if kind=SL then
     if n>12 then Error("so far only dimension <=12 done");fi;
+  elif kind=SU then
+    Info(InfoWarning,1,"SU -- dimensions");
   else
     Error("So far only SL done");
   fi;
 
-  enhance:=function(str,cnt,fct)
-  local i,HM,primes,found,cc;
+  overall:=[];
+
+  enhance:=function(str,papername,cnt,fct)
+  local i,HM,primes,found,cc,schreibauf;
     primes:=fail;
     i:=1;
 
@@ -5412,7 +4932,7 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
       elif cnt=1 and ForAny(primes,x->x>200) then
         cnt:=2;
       fi;
-      Info(InfoArithSub,5,"Enhance ",str," ",i,primes);
+      Info(InfoArithSub,5,"Enhance ",str," ",cnt,":",i,primes);
       i:=i+1;
     od;
 
@@ -5425,6 +4945,7 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
 
     primes:=Filtered(primes,x->not x in bad); # not known bad ones
     cc:=Filtered(primes,x->x in good); # already known good
+    schreibauf:=ShallowCopy(cc);
     primes:=Filtered(primes,x->not x in good); # not already known good ones
 
 #if str[1]='F' then Error(primes);fi;
@@ -5435,11 +4956,12 @@ local f,b,i,all,primes,d,cnt,fct,basch,n,r,v,sn,j,a,homo,homoe,dold,ii,
       HM:=Group(HM);
       if not test(HM,i) then
         Add(good,i);
+        Add(schreibauf,i);
       else
-if i=2 then Error("huh1");fi;
         Add(bad,i);
       fi;
     od;
+    Add(overall,[papername,schreibauf]);
     Info(InfoArithSub,1,str," - candidates: ",
       List(Filtered(found,x->x in bad),x->x.ideal),
       "\nknown:",
@@ -5484,15 +5006,20 @@ if i=2 then Error("huh1");fi;
 
   forcea:=ValueOption("forceadj");
 
-  if kind=SL then
+  if kind=SL or kind=SU then
 
-    if transv<>fail and forcea<>true then
+    if 
+
+              false and    # turn off temporarily
+
+
+    transv<>fail and forcea<>true then
       Print("Have Transvection!\n");
 
       # transvection does not vanish -- Gcd of entries of t-t^0;
       tco:=transv-transv^0;
       tco:=Gcd(List(Flat(tco),Norm));
-      enhance("TransvectionEigenspace ",1,x->tco);
+      enhance("TransvectionEigenspace ","TBD",1,x->tco);
 
       # form normal closure of transvection, hope it is absirr
       rad:=4;
@@ -5536,43 +5063,51 @@ if i=2 then Error("huh1");fi;
       b:=TransposedMat(b);
       i:=MyDiscriminantOfLattice(b);
 
-      enhance("TransvectionSpan ",1,x->i);
+      enhance("TransvectionSpan ","TBD",1,x->i);
 
     else
-      enhance("Absolute irreducibility",1,x->NumberNotAbsIrr(H));
+      enhance("Absolute irreducibility","PrimesForAbsIrreducible",
+        1,x->NumberNotAbsIrr(H));
 
       if IsBound(ordbound_noadj[n]) then
-        enhance("element Order",10,x->NumberForElementOrder(H,ordbound_noadj[n]));
+        enhance("element Order","PrimesForOrder",
+          10,x->NumberForElementOrder(H,ordbound_noadj[n]));
       else
-        enhance("element Order",10,x->NumberForElementOrder(H,ordbound[n]));
+        enhance("element Order","PrimesForOrder",
+          10,x->NumberForElementOrder(H,ordbound[n]));
       fi;
 
 
       if n>2 then
+        enhance("Similarity","PrimesForSimilarity",
+          10,x->PrimesByTraceInverseCommutator(H));
         if redinfo.case=1 
-          or ValueOption("noform")=true then
-          enhance("Similarity",10,x->PrimesByTraceInverseCommutator(H));
+          or kind=SU or ValueOption("noform")=true then
+
+          n:=n; # empty command
+          #enhance("Similarity",10,x->PrimesByTraceInverseCommutator(H));
         else
           # general form, including Galois involution?
           d:=Char0ScalarDomainMatrixList(redinfo.bas)[1]; # the field
           for a in Filtered(Elements(GaloisGroup(d)),x->Order(x)<=2) do
             enhance(Concatenation("Form (",String(Order(a)),")"),
+              "PrimesForGeneralForm",
               30,x->PrimesByTraceInverseGaloisCommutator(H,true,a));
           od;
         fi;
       fi;
 
+      # bounds from Dixon paper: ceil(8.55*log(n+1)/log(10)+0.36)
+      solvlen:=[0,4,5,6,7,8,8,9,9,9,10,10,10,11,11,11,11,12,12,12,12,12,13];
 
       if (n>4 and not IsPrime(n)) or forcea=true then
         # all nonprime degrees except 4, or if forced
         if forcea=true then Print("# forced adjoint method\n");fi;
-        enhance("Adjoint",1,x->NumberAdjointReducible(H,SL));
+        enhance("Adjoint","PrimesAdjoint",1,x->NumberAdjointReducible(H,SL));
       elif IsPrime(n) then
-        enhance("Monomial",
+        enhance("Monomial","PrimesForMonomial",
           10,x->NumberForMonomial(H,Exponent(SymmetricGroup(n))));
 
-        # bounds from Dixon paper: ceil(8.55*log(n+1)/log(10)+0.36)
-        solvlen:=[0,4,5,6,7,8,8,9,9,9,10,10,10,11,11,11,11,12,12,12,12,12,13];
         # and general bound 6 for prime
         for i in Intersection(Primes,
                   Filtered([1..Length(solvlen)],x->solvlen[x]>6)) do
@@ -5580,12 +5115,18 @@ if i=2 then Error("huh1");fi;
         od;
 
         # catches also C3 in prime degree
-        enhance("Solvable",3,x->PrimesByNontrivialCommutators(H,solvlen[n]));
+        enhance("Solvable","PrimesForSolvable",
+          3,x->PrimesByNontrivialCommutators(H,solvlen[n]));
       else
+# just for info, force the solvable test here.
+enhance("Solvable","PrimesForSolvable",
+          3,x->PrimesByNontrivialCommutators(H,solvlen[n]));
+
         # n=4
-        enhance("Imprimitive",3,
+        enhance("Imprimitive","PrimesForImprimitive",3,
           x->NumberForImprimitive(H,Exponent(SymmetricGroup(n))));
-        enhance("Absolutely Reducible G''",10,x->NumberAbsReducibleSecondDerived(H));
+        enhance("Absolutely Reducible G''","PrimesForSecondDerived",
+          10,x->NumberAbsReducibleSecondDerived(H));
       fi;
 
       if redinfo.case<>1 then # extension, test subfields
@@ -5603,13 +5144,19 @@ if i=2 then Error("huh1");fi;
           until Length(hh)>0;
           modimg:=
           List(reduzier,x->Group(List(hh,m->List(m,r->List(r,y->x(y))))));
-        until ForAll(modimg,x->IsNaturalSL(x));
+        until (kind=SL and ForAll(modimg,x->IsNaturalSL(x))) or
+              (kind=SU and ForAll(modimg,x->test(x,irr.irr)));
         hh:=Group(hh);
+#HHH:=hh;
         DetermineIrrelevantPrime(hh,kind,2);
+
+        enhance("Absolute irreducibility derived","Add to Subfields",
+          1,x->NumberNotAbsIrr(hh));
 
         # careful: String "Subfield" is tested for.
         # test the commutator group, not H
-        enhance("Subfield",1,x->DiscriminantTraceRing(hh));
+        enhance("Subfield","PrimesForSubfields",
+          1,x->DiscriminantTraceRing(hh));
 
       fi;
 
@@ -5647,6 +5194,12 @@ if i=2 then Error("huh1");fi;
   else
     Error("non-SL case not done");
   fi;
+
+  # write out which primes where
+  Print("\n Primes found where:\n");
+  for i in overall do
+    Print(i[1],":",List(i[2],x->x.ideal),"\n\n");
+  od;
 
   return good;
 end;
@@ -5825,6 +5378,8 @@ LevelMaxPCS := MaxPCSPrimes ;
 
 # Part 6: Utility functions that eventually should go into GAP
 
+Read("slnatural.g");
+
 InstallMethod( IsNaturalSL, "multiple irreducible reps, recognition size", true,
   [ IsFFEMatrixGroup and IsFinite ], 0, function( grp )
 local gen, d, f,mo;
@@ -5833,7 +5388,7 @@ local gen, d, f,mo;
   d:=DimensionOfMatrixGroup( grp );
   gen:=GeneratorsOfGroup( grp );
   if not ForAll(gen, x-> DeterminantMat(x) = One(f)) then
-    #Error("erra");
+    grp!.nonslreason:=1;
     return false;fi;
   # size known -- easy
   if HasSize(grp) then return Size(grp) = Size(SL(d, Size(f)));fi;
@@ -5841,52 +5396,87 @@ local gen, d, f,mo;
   # natural module
   mo:=GModuleByMats(gen,f);
   if not MTX.IsAbsolutelyIrreducible(mo) then
-    #Error("errb");
+    grp!.nonslreason:=2;
     return false; fi;
 
-  # 2-symmetric
-  if Characteristic(f)>2 then
-    mo:=GModuleByMats(List(gen,x->SymmetricPower(x,2)),f);
+  # test forms
+  if MTX.InvariantBilinearForm(mo)<>fail then 
+    grp!.nonslreason:=3;
+    return false;
+  fi;
+  if RootInt(Size(mo.field),2)^2=Size(mo.field) 
+     and MTX.InvariantSesquilinearForm(mo)<>fail then
+    grp!.nonslreason:=4;
+    return false;
+  fi;
+  if MTX.InvariantQuadraticForm(mo)<>fail then return false; fi;
+
+  # adjoint module must be irreducible unless small prime
+  if Size(FieldOfMatrixGroup(grp))>3 and Length(One(grp))>3 then
+    mo:=ConstructAdjointRep(grp,SL);
+    mo:=GModuleByMats(mo[1],FieldOfMatrixGroup(grp));
     if not MTX.IsAbsolutelyIrreducible(mo) then
-    #Error("errc");
+      grp!.nonslreason:=5;
       return false; fi;
   fi;
 
-  # 2-antisymmetric
-  if Characteristic(f)>2 then
-    mo:=GModuleByMats(List(gen,x->ExteriorPower(x,2)),f);
-    if not MTX.IsAbsolutelyIrreducible(mo) then
-    #Error("errd");
-      return false; fi;
-  fi;
+#  # 2-symmetric
+#  if Characteristic(f)>2 then
+#    mo:=GModuleByMats(List(gen,x->SymmetricPower(x,2)),f);
+#    if not MTX.IsAbsolutelyIrreducible(mo) then
+#    #Error("errc");
+#      return false; fi;
+#  fi;
+#
+#  # 2-antisymmetric
+##  if Characteristic(f)>2 then
+#    mo:=GModuleByMats(List(gen,x->ExteriorPower(x,2)),f);
+#    if not MTX.IsAbsolutelyIrreducible(mo) then
+#    #Error("errd");
+#      return false; fi;
+#  fi;
+#
+#  # 3-symmetric
+#  if Characteristic(f)>3 then
+#    mo:=GModuleByMats(List(gen,x->SymmetricPower(x,3)),f);
+#    if not MTX.IsAbsolutelyIrreducible(mo) then
+#    #Error("erre");
+#      return false; fi;
+#  fi;
 
-  # 3-symmetric
-  if Characteristic(f)>3 then
-    mo:=GModuleByMats(List(gen,x->SymmetricPower(x,3)),f);
-    if not MTX.IsAbsolutelyIrreducible(mo) then
-    #Error("erre");
-      return false; fi;
+  if Size(DefaultFieldOfMatrixGroup(grp)) mod 2=1 then
+    # use the Magma code
+    mo:=RecogniseSLNatural(grp);
+    if IsRecord(mo) then 
+      Print("Magma SL recognition found\n");
+      grp!.nonslreason:=6;
+      return true;
+    fi;
   fi;
 
   mo:=RecognizeGroup(grp);
   if Size(mo) = Size(SL(d, Size(f))) then
     SetSize(grp,Size(mo));
+    grp!.nonslreason:=7;
     return true;
   # try to catch small cases like centre, the outer automs, and permutation,
   # square just to be super safe
   # this will be mostly used to catch subfield cases
   elif Size(mo)<Size(SL(d,Size(f)))/(Factorial(d)*18*Size(f))^2 then
+    grp!.nonslreason:=8;
     return false;
   fi;
 
   # check projective orbit
   mo:=Orbit(grp,One(grp)[2],OnLines:usesortdictionary);
   if Length(mo)<(Size(f)^d-1)/(Size(f)-1) then
+    grp!.nonslreason:=9;
     return false;
   fi;
 
 
   # force proper size w/o recog issues
+  grp!.nonslreason:=10;
   return Size(grp:cheap) = Size(SL(d, Size(f)));
 
 end );
