@@ -6,6 +6,7 @@
 ##  A GAP transcription of the strategy of the Leedham-Green--O'Brien
 ##  algorithm as implemented in Magma's CompositionTree code
 ##  (classical/recognition/natural/odd/sl/{sl.m,gen.m}).
+##  done by Claude.
 ##
 ##  Input : G <= GL(n,q), q odd, n >= 2, with SL(n,q) <= G.
 ##  Output: the Leedham-Green--O'Brien standard generators [a,b,t,delta]
