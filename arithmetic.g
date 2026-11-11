@@ -3809,6 +3809,11 @@ local gen, d, f,mo;
     #Error("errb");
     return false; fi;
 
+  # test forms
+  if MTX.InvariantBilinearForm(mo)<>fail then return false; fi;
+  if MTX.InvariantSesquilinearForm(mo)<>fail then return false; fi;
+  if MTX.InvariantQuadraticForm(mo)<>fail then return false; fi;
+
   # 2-symmetric
   if Characteristic(f)>2 then
     mo:=GModuleByMats(List(gen,x->SymmetricPower(x,2)),f);
@@ -3832,6 +3837,8 @@ local gen, d, f,mo;
     #Error("erre");
       return false; fi;
   fi;
+
+
 
   mo:=RecognizeGroup(grp);
   if Size(mo) = Size(SL(d, Size(f))) then
