@@ -805,6 +805,32 @@ local L,a,i,j,k,x,gc,compareLarger,sqabsvalapprox,sgn,p,b,f,y,approx;
   return Group(p,One(p[1]));
 end;
 
-G1To8:=[LongReidIMRN(),LongReidThistle(ER(3)),LongReidThistle(ER(-3)),
-  LongReidThistle(5+ER(7)),LongReidThistle(8+ER(-7)),
-  LongThistle(ER(3)),LongThistle((1+ER(-3))/2),LongThistle(ER(5))];
+
+# examples for SLnO paper
+G1To9:=[LongReidIMRN(),LongReidThistle(ER(3)),LongReidThistle((1+ER(-3))/2),
+  LongReidThistle(5+ER(7)),LongReidThistle((5+ER(-7))/2),
+  LongThistle(4+ER(3)),LongThistle((1+ER(-3))/2),LongThistle((3+ER(5))/2)];
+
+# SU(4,GaussianInytegers) by Claude:
+#i := E(4);
+#J  := [[0,0,-1,0],[0,0,0,-1],[1,0,0,0],[0,1,0,0]];
+#T1 := [[1,0,1,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+#T2 := [[1,0,0,0],[0,1,0,1],[0,0,1,0],[0,0,0,1]];
+#T3 := [[1,0,0,1],[0,1,1,0],[0,0,1,0],[0,0,0,1]];
+#T4 := [[1,0,0,i],[0,1,-i,0],[0,0,1,0],[0,0,0,1]];
+#R  := [[1,0,0,0],[1,1,0,0],[0,0,1,-1],[0,0,0,1]];  # U=[[1,1],[0,1]]
+#S  := -i*IdentityMat(4);
+#G  := Group(J,T1,T2,T3,T4,R,S);
+# reduced generating set (products)
+#[ [ 1, 0, 1, -1 ], [ 1, 1, 0, 0 ], [ 0, 0, 1, -1 ], [ 0, 0, 0, 1 ] ],
+#  [ [ 0, 0, E(4), 0 ], [ 0, -E(4), -E(4), E(4) ], [ -E(4), 0, 0, -E(4) ],
+#      [ 0, -E(4), -E(4), 0 ] ],
+#  [ [ 1, 0, 0, E(4) ], [ 0, 1, -E(4), 0 ], [ 0, 0, 1, 0 ], [ 0, 0, 0, 1 ] ]
+# Add one upper triangular matrix (that will disappear modulo the numbers:
+# [[1,0,11*E(4),0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]
+# and now products 
+G9:=Group([ [ -E(4), E(4), 2*E(4), -E(4) ], [ 0, -E(4), 0, E(4) ],
+      [ -E(4), E(4), E(4), -E(4) ], [ 0, -E(4), -E(4), 0 ] ],
+  [ [ 1, 0, 11*E(4), E(4) ], [ 0, 1, -E(4), 0 ], [ 0, 0, 1, 0 ],
+      [ 0, 0, 0, 1 ] ]);
+Add(G1To9,G9);
