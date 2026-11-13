@@ -120,6 +120,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-1)), p=5, T1={}",
+  fieldGens:=[[i,Z],["I","Z"]],
   csName := "(a=1,p=5,\\emptyset)",
   k := "Q", ell := "Q(sqrt(-1))", p := 5, T1 := "{}",
   N := 3, numberOfFakePlanes := 1,
@@ -163,6 +164,7 @@ H := CallFuncList(function()
 end, []);
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-1)), p=5, T1={2I}",
+  fieldGens:=[[i,Z],["I","Z"]],
   csName := "(a=1,p=5,\\{2I\\})",
   k := "Q", ell := "Q(sqrt(-1))", p := 5, T1 := "{2I}",
   N := 1, numberOfFakePlanes := 1,
@@ -212,6 +214,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-1)), p=5, T1={2}",
+  fieldGens:=[[i,Z],["I","Z"]],
   csName := "(a=1,p=5,\\{2\\})",
   k := "Q", ell := "Q(sqrt(-1))", p := 5, T1 := "{2}",
   N := 3, numberOfFakePlanes := 1,
@@ -274,6 +277,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-2)), p=3, T1={}",
+  fieldGens:=[[s,Z],["r2","Z"]],
   csName := "(a=2,p=3,\\emptyset)",
   k := "Q", ell := "Q(sqrt(-2))", p := 3, T1 := "{}",
   N := 3, numberOfFakePlanes := 1,
@@ -314,6 +318,7 @@ H := CallFuncList(function()
 end, []);
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-2)), p=3, T1={2I}",
+  fieldGens:=[[s,Z],["r2","Z"]],
   csName := "(a=2,p=3,\\{2I\\})",
   k := "Q", ell := "Q(sqrt(-2))", p := 3, T1 := "{2I}",
   N := 1, numberOfFakePlanes := 1,
@@ -356,6 +361,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-2)), p=3, T1={2}",
+  fieldGens:=[[s,Z],["r2","Z"]],
   csName := "(a=2,p=3,\\{2\\})",
   k := "Q", ell := "Q(sqrt(-2))", p := 3, T1 := "{2}",
   N := 3, numberOfFakePlanes := 1,
@@ -408,6 +414,9 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-7)), p=2, T1={}",
+  #fieldGens:=[[zeta],["E(7)"]],
+  fieldGens:=[[zeta+zeta^2-zeta^3+zeta^4-zeta^5-zeta^6,zeta+zeta^6],
+    ["ER(-7)","EC(7)"]],
   csName := "(a=7,p=2,\\emptyset)",
   k := "Q", ell := "Q(sqrt(-7))", p := 2, T1 := "{}",
   N := 21, numberOfFakePlanes := 3,
@@ -446,6 +455,8 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-7)), p=2, T1={7}",
+  fieldGens:=[[zeta+zeta^2-zeta^3+zeta^4-zeta^5-zeta^6,zeta+zeta^6],
+    ["ER(-7)","EC(7)"]],
   csName := "(a=7,p=2,\\{7\\})",
   k := "Q", ell := "Q(sqrt(-7))", p := 2, T1 := "{7}",
   N := 21, numberOfFakePlanes := 4,
@@ -499,6 +510,8 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-7)), p=2, T1={3}",
+  fieldGens:=[[zeta+zeta^2-zeta^3+zeta^4-zeta^5-zeta^6,zeta+zeta^6],
+    ["ER(-7)","EC(7)"]],
   csName := "(a=7,p=2,\\{3\\})",
   k := "Q", ell := "Q(sqrt(-7))", p := 2, T1 := "{3}",
   N := 3, numberOfFakePlanes := 2,
@@ -541,6 +554,8 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-7)), p=2, T1={3,7}",
+  fieldGens:=[[zeta+zeta^2-zeta^3+zeta^4-zeta^5-zeta^6,zeta+zeta^6],
+    ["ER(-7)","EC(7)"]],
   csName := "(a=7,p=2,\\{3,7\\})",
   k := "Q", ell := "Q(sqrt(-7))", p := 2, T1 := "{3,7}",
   N := 3, numberOfFakePlanes := 2,
@@ -622,6 +637,8 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-7)), p=2, T1={5}",
+  fieldGens:=[[zeta+zeta^2-zeta^3+zeta^4-zeta^5-zeta^6,zeta+zeta^6],
+    ["ER(-7)","EC(7)"]],
   csName := "(a=7,p=2,\\{5\\})",
   k := "Q", ell := "Q(sqrt(-7))", p := 2, T1 := "{5}",
   N := 1, numberOfFakePlanes := 1,
@@ -694,6 +711,8 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-7)), p=2, T1={5,7}",
+  fieldGens:=[[zeta+zeta^2-zeta^3+zeta^4-zeta^5-zeta^6,zeta+zeta^6],
+    ["ER(-7)","EC(7)"]],
   csName := "(a=7,p=2,\\{5,7\\})",
   k := "Q", ell := "Q(sqrt(-7))", p := 2, T1 := "{5,7}",
   N := 1, numberOfFakePlanes := 1,
@@ -749,6 +768,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-15)), p=2, T1={}",
+  fieldGens:=[[s,Z],["ER(-23)","Z"]],
   csName := "(a=15,p=2,\\emptyset)",
   k := "Q", ell := "Q(sqrt(-15))", p := 2, T1 := "{}",
   N := 3, numberOfFakePlanes := 2,
@@ -793,6 +813,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-15)), p=2, T1={3}",
+  fieldGens:=[[s,Z],["ER(-15)","Z"]],
   csName := "(a=15,p=2,\\{3\\})",
   k := "Q", ell := "Q(sqrt(-15))", p := 2, T1 := "{3}",
   N := 3, numberOfFakePlanes := 3,
@@ -836,6 +857,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-15)), p=2, T1={5}",
+  fieldGens:=[[s,Z],["ER(-15)","Z"]],
   csName := "(a=15,p=2,\\{5\\})",
   k := "Q", ell := "Q(sqrt(-15))", p := 2, T1 := "{5}",
   N := 3, numberOfFakePlanes := 2,
@@ -882,6 +904,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-15)), p=2, T1={3,5}",
+  fieldGens:=[[s,Z],["ER(-15)","Z"]],
   csName := "(a=15,p=2,\\{3,5\\})",
   k := "Q", ell := "Q(sqrt(-15))", p := 2, T1 := "{3,5}",
   N := 3, numberOfFakePlanes := 3,
@@ -971,6 +994,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-23)), p=2, T1={}",
+  fieldGens:=[[s,Z],["ER(-23)","Z"]],
   csName := "(a=23,p=2,\\emptyset)",
   k := "Q", ell := "Q(sqrt(-23))", p := 2, T1 := "{}",
   N := 1, numberOfFakePlanes := 1,
@@ -1077,6 +1101,7 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "Q(sqrt(-23)), p=2, T1={23}",
+  fieldGens:=[[s,Z],["ER(-23)","Z"]],
   csName := "(a=23,p=2,\\{23\\})",
   k := "Q", ell := "Q(sqrt(-23))", p := 2, T1 := "{23}",
   N := 1, numberOfFakePlanes := 1,
@@ -1137,6 +1162,10 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "C2, p=2, T1={}",
+ # fieldGens:=[[-g,zeta],["EB(5)","Z"]],
+  fieldGens:=[[1/17*t^9-38/17,4/17*t^9+t^6+4*t^3-16/17,
+    21/34*t^11+1/34*t^10+5/2*t^8+21/2*t^5-42/17*t^2-55/34*t],
+    ["ER(5)","E(3)","EY(9)"]],
   csName := "(C2,p=2,\\emptyset)",
   k := "Q(sqrt(5))", ell := "Q(sqrt(5))(sqrt(-3))", p := 2, T1 := "{}",
   N := 9, numberOfFakePlanes := 6,
@@ -1202,6 +1231,9 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "C2, p=2, T1={3}",
+  fieldGens:=[[1/17*t^9-38/17,4/17*t^9+t^6+4*t^3-16/17,
+    21/34*t^11+1/34*t^10+5/2*t^8+21/2*t^5-42/17*t^2-55/34*t],
+    ["ER(5)","E(3)","EY(9)"]],
   csName := "(C2,p=2,\\{3\\})",
   k := "Q(sqrt(5))", ell := "Q(sqrt(5))(sqrt(-3))", p := 2, T1 := "{3}",
   N := 9, numberOfFakePlanes := 1,
@@ -1666,3 +1698,45 @@ FakeProjectivePlaneGroups := FakeProjectivePlaneGroups{List(
     "C18, p=3, T1={}", "C18, p=3, T1={2}", "C18, p=3, T1={2I}",
     "C20, p=2, T1={}", "C20, p=2, T1={3+}", "C20, p=2, T1={3-}" ],
   n -> PositionProperty(FakeProjectivePlaneGroups, r -> r.name = n))};
+
+MakePlaneGroup:=function(r,nr)
+local a,f,g,iso,isScalar,F,fam;
+  isScalar:=m-> not IsZero(m[1][1]) and IsOne(m/m[1][1]);
+
+  if not ForAll(RelatorsOfFpGroup(r.presentation),
+    x->isScalar(MappedWord(x,FreeGeneratorsOfFpGroup(r.presentation),r.matrix)))
+      then
+    Error("Does not match!");
+  fi;
+
+  # set field display (for `String`)
+  F:=r.field;
+  fam:=FamilyObj(One(F));
+  if not IsBound(fam!.nicePrintBasis) and IsBound(r.fieldGens) then
+    fam!.nicePrintBasis:=NamedBasisFromElements(F,r.fieldGens[1],r.fieldGens[2]);
+  fi;
+
+  a:=r.fakePlanes[nr];
+  g:=List(a.generators,x->MappedWord(x,GeneratorsOfGroup(r.presentation),r.matrix));
+  g:=Group(g);
+  SetName(g,Concatenation("CSM(",a.name,")"));
+  f:=Subgroup(r.presentation,a.generators);
+  iso:=IsomorphismFpGroup(f);
+  iso:=iso*IsomorphismSimplifiedFpGroup(Range(iso));
+  f:=Range(iso);
+  if Length(GeneratorsOfGroup(f))<>Length(GeneratorsOfGroup(g)) 
+    or not ForAll(RelatorsOfFpGroup(f),x->isScalar(
+       MappedWord(x,FreeGeneratorsOfFpGroup(f),GeneratorsOfGroup(g)))) then
+    Print("redo to match generators\n");
+    f:=Subgroup(r.presentation,a.generators);
+    iso:=IsomorphismFpGroupByGenerators(f,a.generators);
+    f:=Range(iso);
+    if not ForAll(RelatorsOfFpGroup(f),
+      x->isScalar(MappedWord(x,FreeGeneratorsOfFpGroup(f),GeneratorsOfGroup(g))))
+        then
+           Error("still mismatch");
+    fi;
+    SetName(f,Concatenation("CSP(",a.name,")"));
+  fi;
+  return [f,g];
+end;
