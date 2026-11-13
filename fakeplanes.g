@@ -1254,6 +1254,7 @@ x := Indeterminate(Rationals, "x");
 F := FieldExtension(Rationals, x^12-6*x^11+27*x^10-102*x^9+306*x^8-432*x^7+783*x^6-756*x^5+324*x^4+432*x^3+2592*x^2+5184);
 one := One(F);
 t := RootOfDefiningPolynomial(F);   # t = U*W+U
+# h is ER(2)
 h := (11/290016*t^11-91/145008*t^10+2839/870048*t^9-35/2544*t^8+785/16112*t^7-2245/18126*t^6+15103/96672*t^5-1117/4028*t^4+398/3021*t^3+385/1007*t^2-423/2014*t-557/1007)*one;
 U := (-76951/273920112*t^11+180503/136960056*t^10-211489/43250544*t^9+252463/15217784*t^8-621149/15217784*t^7-251425/17120007*t^6-20431/1722768*t^5+98561/3804446*t^4+171700/5706669*t^3+370550/1902223*t^2-2077533/1902223*t+146112/1902223)*one;
 W := (-1477/91306704*t^11-187427/821760336*t^10+99307/91306704*t^9-122207/30435568*t^8+81536/5706669*t^7-620687/15217784*t^6-945969/30435568*t^5-1323/1601872*t^4+189387/7608892*t^3+211761/7608892*t^2+351969/1902223*t-3474352/1902223)*one;
@@ -1298,6 +1299,8 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "C10, p=2, T1={}",
+  # rr is i*sqrt(5+2*sqrt(2)). Minimal polynomial x^4+10*x^2+17
+  fieldGens:=[[h,2*(U-1/2-1/h),W],["ER(2)","rr","w"]],
   csName := "(C10,p=2,\\emptyset)",
   k := "Q(sqrt(2))", ell := "Q(sqrt(2))(sqrt(-5+2*sqrt(2)))", p := 2, T1 := "{}",
   N := 3, numberOfFakePlanes := 1,
@@ -1360,6 +1363,7 @@ x := Indeterminate(Rationals, "x");
 F := FieldExtension(Rationals, x^12+216*x^6+46656);
 one := One(F);
 t := RootOfDefiningPolynomial(F);   # t = h*zeta
+# ER(6)
 h := (1/1296*t^9)*one;
 zeta := (1/7776*t^10)*one;
 tbar := (-1/7776*t^11-1/36*t^5)*one;   # image of t under conj
@@ -1402,6 +1406,8 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "C18, p=3, T1={}",
+  # w has minpol x^3-3*x-1
+  fieldGens:=[[h,1/216*t^6+1,1/1296*t^8-1/36*t^4+1/6*t^2],["ER(6)","E(3)","w"]],
   csName := "(C18,p=3,\\emptyset)",
   k := "Q(sqrt(6))", ell := "Q(sqrt(6))(sqrt(-3))", p := 3, T1 := "{}",
   N := 9, numberOfFakePlanes := 1,
@@ -1538,9 +1544,9 @@ x := Indeterminate(Rationals, "x");
 F := FieldExtension(Rationals, x^12-x^10+x^8-x^6+x^4-x^2+1);
 one := One(F);
 t := RootOfDefiningPolynomial(F);   # t = i*zeta
-h := (2*t^11-2*t^9+t^7-2*t)*one;
-i := (-t^7)*one;
-zeta := (t^8)*one;
+h := (2*t^11-2*t^9+t^7-2*t)*one;   # ER(7)
+i := (-t^7)*one;                   # E(4)
+zeta := (t^8)*one;                 # E(7)
 tbar := (-t^11+t^9-t^7+t^5-t^3+t)*one;   # image of t under conj
 conj := e -> ValuePol(ExtRepOfObj(e), tbar);
 form := [ [ (i*zeta^2-h*zeta^2+2*zeta^2-h*i*zeta+3*i*zeta-h*zeta+3*zeta-h*i+3*i-h+3)/2, 0, 0 ],
@@ -1571,6 +1577,8 @@ mats := [
 ];
 Add(FakeProjectivePlaneGroups, rec(
   name := "C20, p=2, T1={}",
+  #fieldGens:=[[i,h,t^8-t^6],["I","ER(7)","EC(7)"]],
+  fieldGens:=[[i,zeta],["I","E(7)"]],
   csName := "(C20,p=2,\\emptyset)",
   k := "Q(sqrt(7))", ell := "Q(sqrt(7))(sqrt(-1))", p := 2, T1 := "{}",
   N := 21, numberOfFakePlanes := 1,
