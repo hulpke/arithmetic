@@ -3185,39 +3185,37 @@ local red,modfun,maz,f;
 end;
 
 AnalyzeCongruenceImage:=function(H)
-local f,s,d,p,i,mo,a,ran,r;
+local f,s,d,p,i,mo,a,ran,r,str,post;
   f:=FieldOfMatrixGroup(H);
+  d:=DimensionOfMatrixGroup(H);
+  p:=PrimeBase(Size(f));
   Print("Field of Definition :",f,"\n\n");
 
 
   if IsNaturalSL(H) then
-    Print("Is SL\n");
-    return;
+    return Concatenation("full SL(",
+      String(d),",",String(p),"^",String(DegreeOverPrimeField(f)),")");
   fi;
   r:=RecognizeGroup(H);
-  d:=DimensionOfMatrixGroup(H);
   s:=Size(r);
   SetSize(H,s);
   Print("Recog :\n");
   View(r);
   Print("\n\n");
 
-  p:=PrimeBase(Size(f));
   # try groups over smaller fields
   for i in Reversed([1..DegreeOverPrimeField(f)]) do
     if s=Size(SL(d,p^i)) then
-      Print("Is SL(",d,",",p,"^",i,")\n");
-      return;
+      return Concatenation("SL(",String(d),",",String(p),"^",String(i),")");
     elif IsEvenInt(d) and s=Size(SP(d,p^i)) then
-      Print("Is Sp(",d,",",p,"^",i,")\n");
-      return;
+      return Concatenation("Sp(",String(d),",",String(p),"^",String(i),")");
     elif IsEvenInt(i) and s=Size(SU(d,p^(i/2))) then
-      Print("Is SU(",d,",",p,"^",i/2,")\n");
-      return;
+      return Concatenation("SU(",String(d),",",String(p),"^",String(i/2),")");
     fi;
   od;
 
   # find module action structure
+  post:="";
   mo:=GModuleByMats(GeneratorsOfGroup(H),f);
   if not MTX.IsIrreducible(mo) then
     s:=MTX.BasesCompositionSeries(mo);
@@ -3230,6 +3228,8 @@ local f,s,d,p,i,mo,a,ran,r;
       a:=Group(a);
       IsNaturalSL(a);
       Print("Block ",Length(i),":",Size(a),"\n");
+      if Length(post)>0 then Append(post,", ");fi;
+      Append(post,Concatenation("Block ",String(i),":",String(Size(a))));
     od;
   fi;
 
@@ -3237,8 +3237,12 @@ local f,s,d,p,i,mo,a,ran,r;
   if IsSolvableGroup(a) then
     a:=Image(IsomorphismPcGroup(a));
   fi;
-  Print("Structure :",StructureDescription(a),"\n");
-
+  str:=StructureDescription(a);
+  if Length(post)>0 then
+    Append(str,"; ");
+    Append(str,post);
+  fi;
+  return str;
 end;
 
 # utility fct to find irrelevant prime
