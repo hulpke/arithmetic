@@ -1,3 +1,18 @@
+
+CostLimitedFactors:=function(n);
+  if ValueOption("cheapfactor")=true then
+    a:=PartialFactorization(n);
+    p:=Filtered(a,IsPrimeInt);
+    a:=Filtered(a,x->not x in p);
+    if Length(a)>0 then
+      Print("Eliminated huge factors: ",a,"\n");
+    fi;
+    return p;
+  else
+    return Factors(n);
+  fi;
+end;
+
 # create functions for some basic number theoretic operations for the ring
 # of integers of an algebraic number field. The input parameter `ring` is
 # either Z or Q, or the algebraic number field.
@@ -181,7 +196,7 @@ local cb,vecs,cf,n,k,q,ex,i,j,v,B,orderdata,T,disc,p,one,Fr,e,R,I,Iinv,
 
   # smallest k such that k*theta is integral
   k:=1;
-  for q in Set(Factors(Lcm(List(cf,DenominatorRat)))) do
+  for q in Set(CostLimitedFactors(Lcm(List(cf,DenominatorRat)))) do
     if q>1 then
       ex:=0;
       for i in [0..n-1] do
@@ -210,7 +225,7 @@ local cb,vecs,cf,n,k,q,ex,i,j,v,B,orderdata,T,disc,p,one,Fr,e,R,I,Iinv,
 
   T:=orderdata(B);
   disc:=DeterminantMat(NumthTraceForm(T));
-  for p in Set(Factors(AbsInt(disc))) do
+  for p in Set(CostLimitedFactors(AbsInt(disc))) do
     while p>1 and disc mod p^2=0 do
       one:=One(GF(p));
       # p-radical I of the order
@@ -575,8 +590,14 @@ local cb,coeffs,rawc,B,Binv,a,n,bas,multab,tr,G,lll,Tm,Tminv,oldpin;
   end;
 
   d.makeredfun:=basimg->function(elm)
-                         return d.coeffs(elm)*basimg; # linear comb
-                       end;
+                        local c;
+                          c:=d.coeffs(elm);
+                          if not ForAll(c,IsInt) then
+                            c:=List(c,
+                              x->x mod FamilyObj(basimg)!.Characteristic);
+                          fi;
+                          return c*basimg; # linear comb
+                        end;
 
   d.doprimedeco:=function(p)
     if p=1 then return [p];fi;
@@ -588,7 +609,7 @@ local cb,coeffs,rawc,B,Binv,a,n,bas,multab,tr,G,lll,Tm,Tminv,oldpin;
   d.primesinnumber:=function(x)
   local l;
     if IsRat(x) then return oldpin(x);fi;
-    l:=Filtered(Set(Factors(d.normval(x))),p->p>1);
+    l:=Filtered(Set(CostLimitedFactors(d.normval(x))),p->p>1);
     return Filtered(Concatenation(List(l,d.primesinprime)),
                     P->IsZero(P.redfun(x)));
   end;
@@ -601,7 +622,7 @@ local cb,coeffs,rawc,B,Binv,a,n,bas,multab,tr,G,lll,Tm,Tminv,oldpin;
   local den,l,res,P,v;
     if IsZero(x) then Error("zero has no factorization");fi;
     den:=d.denominatorfun(x);
-    l:=Set(Concatenation(Factors(d.normval(den*x)),Factors(den)));
+    l:=Set(Concatenation(CostLimitedFactors(d.normval(den*x)),CostLimitedFactors(den)));
     l:=Filtered(l,p->p>1);
     res:=[];
     for P in Concatenation(List(l,d.primesinprime)) do
@@ -686,7 +707,7 @@ local d,den,c,makeredfun,a,basimg;
       b:=PartialFactorization(a);
       a:=Set(Filtered(b,IsPrimeInt));
     else
-      a:=Set(Factors(a));
+      a:=Set(CostLimitedFactors(a));
     fi;
     if a=[1] then return a;fi;
     return Concatenation(List(a,d.primesinprime));
@@ -763,7 +784,7 @@ local d,den,c,makeredfun,a,basimg;
       if p=1 then return [p];fi;
       pol:=PolynomialModP(d.minpol,p);
       l:=[];
-      for i in Collected(Factors(pol)) do
+      for i in Collected(CostLimitedFactors(pol)) do
         m:=i[1];
         a:=RootsOfUPol(GF(p^DegreeOfLaurentPolynomial(m)),m)[1];
         a:=basimg(a); # basis images, given that minpol is for bas[2]
@@ -915,3 +936,222 @@ local d,den,c,makeredfun,a,basimg;
 
 end;
 
+#############################################################################
+##
+##  SturmSequence( <f> )
+##
+##  Returns the Sturm sequence  f_0 = f, f_1 = f', f_{i+1} = -rem(f_{i-1}, f_i)
+##  of the univariate rational polynomial <f>, stopping at the last nonzero
+##  term (which is, up to a constant, Gcd(f, f')).
+##
+BindGlobal( "SturmSequence", function( f )
+local seq, a, b, r;
+  if not IsUnivariatePolynomial( f ) then
+    Error( "<f> must be a univariate polynomial" );
+  fi;
+  seq := [ f ];
+  a := f;
+  b := Derivative( f );
+  while not IsZero( b ) do
+    Add( seq, b );
+    r := -EuclideanRemainder( a, b );
+    a := b;
+    b := r;
+  od;
+  return seq;
+end );
+
+#############################################################################
+##
+##  SignChanges( <list> )
+##
+##  Number of sign changes in a list of rationals, ignoring zeros.
+##
+BindGlobal( "SignChanges", function( l )
+  l := List( Filtered( l, x -> not IsZero( x ) ), SignInt );
+  return Number( [ 2 .. Length( l ) ], i -> l[i] <> l[i-1] );
+end );
+
+#############################################################################
+##
+##  NrRealRootsSturm( <f> )
+##  NrRealRootsSturm( <f>, <a>, <b> )
+##
+##  Number of distinct real roots of the rational polynomial <f>; with
+##  rationals <a> < <b> given, the number of distinct roots in (a, b].
+##  The value at -infinity / +infinity is read off from the leading
+##  coefficient and the parity of the degree of each term.
+##
+BindGlobal( "NrRealRootsSturm", function( arg )
+local f, seq, atMinusInf, atPlusInf, a, b;
+  f := arg[1];
+  if IsZero( f ) then
+    Error( "the zero polynomial has infinitely many roots" );
+  fi;
+  # make f squarefree; this does not change the set of roots, and makes the
+  # interval version valid also when an endpoint is a root
+  f := Quotient( f, Gcd( f, Derivative( f ) ) );
+  seq := SturmSequence( f );
+
+  if Length( arg ) = 1 then
+    atPlusInf  := List( seq, LeadingCoefficient );
+    atMinusInf := List( seq,
+      g -> (-1)^DegreeOfLaurentPolynomial( g ) * LeadingCoefficient( g ) );
+    return SignChanges( atMinusInf ) - SignChanges( atPlusInf );
+  elif Length( arg ) = 3 then
+    a := arg[2];
+    b := arg[3];
+    if not a < b then
+      Error( "need <a> < <b>" );
+    fi;
+    return SignChanges( List( seq, g -> Value( g, a ) ) )
+         - SignChanges( List( seq, g -> Value( g, b ) ) );
+  else
+    Error( "usage: NrRealRootsSturm( <f> [, <a>, <b>] )" );
+  fi;
+end );
+
+
+#############################################################################
+##
+##  NamedBasisFromElements( <F>, <L>, <names> )
+##
+##  <F>      an algebraic extension of the rationals, e.g. AlgebraicExtension
+##  <L>      a list of elements of <F>
+##  <names>  a list of strings, <names>[i] being the name of <L>[i]
+##
+##  Tries to find a Q-basis B of <F> consisting of 1 and monomials
+##  L[1]^e1 * ... * L[k]^ek in the elements of <L>. Monomials are tried by
+##  increasing total degree; within a degree, products of distinct elements
+##  are tried before products involving powers. A monomial is kept if it is
+##  linearly independent of those chosen so far.
+##
+##  Returns a list [ B, Bnames ] where Bnames[j] is a string such as "1",
+##  "a", "a*b" or "a^2*c" describing B[j]. If the elements of <L> do not
+##  generate <F> (as an algebra), a warning is printed and B is a basis of
+##  the subalgebra Q[L] only.
+##
+##  If B is complete, Basis( F, B ) gives a GAP basis object, so that
+##  Coefficients( Basis( F, B ), x ) expresses x in terms of B.
+##
+BindGlobal( "NamedBasisFromElements", function( F, L, names )
+local n, k, coeffs, rows, rank, B, Bnames, Bexps, layer, newlayer,
+      cands, e, i, x, v, monname, squarefree;
+
+  if Length( L ) <> Length( names ) then
+    Error( "<L> and <names> must have the same length" );
+  fi;
+  n := DegreeOverPrimeField( F );
+  k := Length( L );
+
+  # coefficient vector of an element w.r.t. the power basis of F
+  coeffs := x -> Coefficients( Basis( F ), x );
+
+  # name of a monomial given by its exponent vector
+  monname := function( e )
+  local parts, i;
+    parts := [];
+    for i in [ 1 .. Length( e ) ] do
+      if e[i] = 1 then
+        Add( parts, names[i] );
+      elif e[i] > 1 then
+        Add( parts, Concatenation( names[i], "^", String( e[i] ) ) );
+      fi;
+    od;
+    if parts = [] then
+      return "1";
+    fi;
+    return JoinStringsWithSeparator( parts, "*" );
+  end;
+
+  squarefree := e -> ForAll( e, a -> a <= 1 );
+
+  B      := [ One( F ) ];
+  Bnames := [ "1" ];
+  Bexps  := [ ListWithIdenticalEntries( k, 0 ) ];
+  rows   := [ coeffs( One( F ) ) ];
+  rank   := 1;
+  layer  := [ Bexps[1] ];   # exponent vectors of basis elements of last degree
+
+  # Candidates of degree d are (basis element of degree d-1) * L[i]. This
+  # suffices: by induction, the span of all monomials of degree <= d equals
+  # the span of the basis elements chosen of degree <= d.
+  while rank < n and layer <> [] do
+    cands := [];
+    for e in layer do
+      for i in [ 1 .. k ] do
+        v := ShallowCopy( e );
+        v[i] := v[i] + 1;
+        AddSet( cands, v );
+      od;
+    od;
+    # earlier elements of <L> first (descending lexicographic order), and
+    # products of distinct elements before those involving powers
+    Sort( cands, function( u, v ) return u > v; end );
+    cands := Concatenation( Filtered( cands, squarefree ),
+                            Filtered( cands, e -> not squarefree( e ) ) );
+
+    newlayer := [];
+    for e in cands do
+      if rank = n then
+        break;
+      fi;
+      x := Product( [ 1 .. k ], i -> L[i]^e[i], One( F ) );
+      v := coeffs( x );
+      if RankMat( Concatenation( rows, [ v ] ) ) > rank then
+        Add( rows, v );
+        rank := rank + 1;
+        Add( B, x );
+        Add( Bnames, monname( e ) );
+        Add( Bexps, e );
+        Add( newlayer, e );
+      fi;
+    od;
+    layer := newlayer;
+  od;
+
+  if rank < n then
+    Info( InfoWarning, 1, "NamedBasisFromElements: the elements only span a ",
+          "subalgebra of dimension ", rank, " < ", n );
+  fi;
+  return [ Basis(F,B), Bnames ];
+end );
+
+InstallMethod(String,"AlgElm",true,[IsKroneckerConstRep],1,
+function(a)
+local fam,b,s,i,c,nam,den;
+  fam:=FamilyObj(a);
+  if not IsBound(fam!.nicePrintBasis) then TryNextMethod();fi;
+  s:="";
+  b:=fam!.nicePrintBasis[1];
+  c:=Coefficients(b,a);
+  den:=Lcm(List(c,DenominatorRat));
+  if den<>1 then
+    c:=c*den;
+  fi;
+
+  nam:=fam!.nicePrintBasis[2];
+  for i in [1..Length(c)] do
+    if not IsZero(c[i]) then
+      t:=String(c[i]);
+      if Length(s)>0 and t[1]<>'-' then Add(s,'+');fi;
+      if IsOne(b[i]) then
+        Append(s,t);
+      elif IsOne(c[i]) then
+        Append(s,nam[i]);
+      elif IsOne(-c[i]) then
+        Add(s,'-');
+        Append(s,nam[i]);
+      else
+        Append(s,t);
+        Add(s,'*');
+        Append(s,nam[i]);
+      fi;
+    fi;
+  od;
+  if den<>1 then
+    s:=Concatenation("1/",String(den),"*(",s,")");
+  fi;
+
+  return s;
+end);
