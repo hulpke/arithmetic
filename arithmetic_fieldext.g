@@ -3185,7 +3185,7 @@ local red,modfun,maz,f;
 end;
 
 AnalyzeCongruenceImage:=function(H)
-local f,s,d,p,i,mo,a,ran,r,str,post;
+local f,s,d,p,i,mo,a,ran,r,str,post,new,j;
   f:=FieldOfMatrixGroup(H);
   d:=DimensionOfMatrixGroup(H);
   p:=PrimeBase(Size(f));
@@ -3220,9 +3220,16 @@ local f,s,d,p,i,mo,a,ran,r,str,post;
   if not MTX.IsIrreducible(mo) then
     s:=MTX.BasesCompositionSeries(mo);
     ran:=List([2..Length(s)],x->[Length(s[x-1])+1..Length(s[x])]);
-    s:=s[Length(s)];
+    a:=ShallowCopy(s[2]);;
+    for i in [3..Length(s)] do
+      for j in s[i] do
+        if Length(a)<Length(s[i]) and SolutionMat(a,j)=fail then
+          Add(a,j);
+        fi;
+      od;
+    od;
     # conjugate
-    H:=H^s;
+    H:=H^Inverse(a);
     for i in ran do
       a:=List(GeneratorsOfGroup(H),x->x{i}{i});
       a:=Group(a);
@@ -3237,7 +3244,7 @@ local f,s,d,p,i,mo,a,ran,r,str,post;
   if IsSolvableGroup(a) then
     a:=Image(IsomorphismPcGroup(a));
   fi;
-  str:=StructureDescription(a);
+  str:=ShallowCopy(StructureDescription(a));
   if Length(post)>0 then
     Append(str,"; ");
     Append(str,post);
