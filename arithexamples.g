@@ -807,7 +807,7 @@ end;
 
 
 # examples for SLnO paper
-G1To9:=[LongReidIMRN(),LongReidThistle(ER(3)),LongReidThistle((1+ER(-3))/2),
+G1To10:=[LongReidIMRN(),LongReidThistle(ER(3)),LongReidThistle((1+ER(-3))/2),
   LongReidThistle(5+ER(7)),LongReidThistle((5+ER(-7))/2),
   LongThistle(4+ER(3)),LongThistle((1+ER(-3))/2),LongThistle((3+ER(5))/2)];
 
@@ -833,4 +833,10 @@ G9:=Group([ [ -E(4), E(4), 2*E(4), -E(4) ], [ 0, -E(4), 0, E(4) ],
       [ -E(4), E(4), E(4), -E(4) ], [ 0, -E(4), -E(4), 0 ] ],
   [ [ 1, 0, 11*E(4), E(4) ], [ 0, 1, -E(4), 0 ], [ 0, 0, 1, 0 ],
       [ 0, 0, 0, 1 ] ]);
-Add(G1To9,G9);
+Add(G1To10,G9);
+
+# SL(Z) and one extra matrix with 5*ER(7) off diagonal. 5 is inert in
+# Z(ER(7))
+G10:=Group([ [ 2, 1, 2 ], [ 1, 1, 1 ], [ 0, 0, 1 ]
+],[[1,5*ER(7),0],[0,1,0],[1,1+5*ER(7),1]]);
+Add(G1To10,G10);
