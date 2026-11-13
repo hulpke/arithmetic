@@ -1,5 +1,6 @@
 
-CostLimitedFactors:=function(n);
+CostLimitedFactors:=function(n)
+local a,p;
   if ValueOption("cheapfactor")=true then
     a:=PartialFactorization(n);
     p:=Filtered(a,IsPrimeInt);
@@ -1119,7 +1120,7 @@ end );
 
 InstallMethod(String,"AlgElm",true,[IsKroneckerConstRep],1,
 function(a)
-local fam,b,s,i,c,nam,den;
+local fam,b,s,t,i,c,nam,den;
   fam:=FamilyObj(a);
   if not IsBound(fam!.nicePrintBasis) then TryNextMethod();fi;
   s:="";
