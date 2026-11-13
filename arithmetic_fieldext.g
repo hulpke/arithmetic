@@ -1,6 +1,6 @@
 # Functionality for arithmetic groups, based on papers by AD,DF,AH
-ARITHVERSION:="1.15";
-# April 2024
+ARITHVERSION:="1.20";
+# November 2026
 
 DeclareInfoClass("InfoArithSub");
 SetInfoLevel(InfoArithSub,1);
@@ -225,7 +225,7 @@ local gens,m,i,j,addtest,denom;
         if den=1 then
           m:=Filtered(HermiteNormalFormIntegerMat(m),x->not IsZero(x));
         else
-Print("den=",den,"\n");
+#Print("den=",den,"\n");
           m:=m*den;
           m:=Filtered(HermiteNormalFormIntegerMat(m),x->not IsZero(x));
           m:=m/den;
@@ -3184,6 +3184,63 @@ local red,modfun,maz,f;
   return Group(maz);
 end;
 
+AnalyzeCongruenceImage:=function(H)
+local f,s,d,p,i,mo,a,ran,r;
+  f:=FieldOfMatrixGroup(H);
+  Print("Field of Definition :",f,"\n\n");
+
+
+  if IsNaturalSL(H) then
+    Print("Is SL\n");
+    return;
+  fi;
+  r:=RecognizeGroup(H);
+  d:=DimensionOfMatrixGroup(H);
+  s:=Size(r);
+  SetSize(H,s);
+  Print("Recog :\n");
+  View(r);
+  Print("\n\n");
+
+  p:=PrimeBase(Size(f));
+  # try groups over smaller fields
+  for i in Reversed([1..DegreeOverPrimeField(f)]) do
+    if s=Size(SL(d,p^i)) then
+      Print("Is SL(",d,",",p,"^",i,")\n");
+      return;
+    elif IsEvenInt(d) and s=Size(SP(d,p^i)) then
+      Print("Is Sp(",d,",",p,"^",i,")\n");
+      return;
+    elif IsEvenInt(i) and s=Size(SU(d,p^(i/2))) then
+      Print("Is SU(",d,",",p,"^",i/2,")\n");
+      return;
+    fi;
+  od;
+
+  # find module action structure
+  mo:=GModuleByMats(GeneratorsOfGroup(H),f);
+  if not MTX.IsIrreducible(mo) then
+    s:=MTX.BasesCompositionSeries(mo);
+    ran:=List([2..Length(s)],x->[Length(s[x-1])+1..Length(s[x])]);
+    s:=s[Length(s)];
+    # conjugate
+    H:=H^s;
+    for i in ran do
+      a:=List(GeneratorsOfGroup(H),x->x{i}{i});
+      a:=Group(a);
+      IsNaturalSL(a);
+      Print("Block ",Length(i),":",Size(a),"\n");
+    od;
+  fi;
+
+  a:=Image(IsomorphismPermGroup(H:cheap));
+  if IsSolvableGroup(a) then
+    a:=Image(IsomorphismPcGroup(a));
+  fi;
+  Print("Structure :",StructureDescription(a),"\n");
+
+end;
+
 # utility fct to find irrelevant prime
 DetermineIrrelevantPrime:=function(H,kind,bound)
 local test,irr,ira,ind,good,bad,denom,HM,f,dim,ring,redinfo,a,b,
@@ -3929,7 +3986,7 @@ local gens,n,d,bv,zc,act,A,L,new,sol,changed,v,a,T,trpos;
 end;
 
 DiscriminantTraceRing:=function(G)
-local red,bas,module,span,addmat,i,j,k,a,z,y;
+local red,bas,module,span,addmat,i,j,k,a,z,y,new;
   red:=G!.IrrprimeInfo.red;
   bas:=red.bas;
   
@@ -3942,10 +3999,11 @@ local red,bas,module,span,addmat,i,j,k,a,z,y;
   #  and ℤ[G] is the natural way to get it, since tr is ℤ-linear.
   if G!.IrrprimeInfo.denom<>[] then
     a:=Product(G!.IrrprimeInfo.denom);
+    new:=1; # ZTrace lattice does not work with denominators
   else
     a:=1;
+    new:= ZTraceLatticeIndex(G,bas,a);
   fi;
-  return ZTraceLatticeIndex(G,bas,a);
 
   span:=[Concatenation(One(G))];
   span:=RegModZSpan(GeneratorsOfGroup(G),span,G!.IrrprimeInfo.irr.redfun,red);
@@ -3959,7 +4017,8 @@ local red,bas,module,span,addmat,i,j,k,a,z,y;
 
   module:=HermiteNormalFormIntegerMat(module);
   module:=Filtered(module,x->not IsZero(x));
-  return MyDiscriminantOfLattice(module)*Product(k);
+  a:=MyDiscriminantOfLattice(module)*Product(k);
+  return Lcm(a,new);
 end;
 
 ## prime>3 must be so G is SL mod prime
